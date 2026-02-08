@@ -107,7 +107,8 @@ Commands:
     install            Install/reinstall to ~/.local/bin and configure alias
     help               Show this help message
 
-Aliases: new=create, ls=list, go=switch, rm=delete
+Shorthand: $script_name <branch>   Open worktree (same as: open <branch>)
+Aliases:   new=create, ls=list, go=switch, rm=delete
 
 Global Options:
     -v, --verbose      Verbose output
@@ -330,7 +331,33 @@ prune_stale_state() {
 # ─── iTerm2 AppleScript Functions ─────────────────────────────────────────────
 
 iterm2_is_running() {
-    pgrep -x "iTerm2" > /dev/null 2>&1
+    osascript -e 'tell application "System Events" to (name of processes) contains "iTerm2"' 2>/dev/null | grep -q "true"
+}
+
+# Ensure iTerm2 is running, launching it if needed
+# Returns 0 on success, 1 if iTerm2 cannot be started
+iterm2_ensure_running() {
+    if iterm2_is_running; then
+        return 0
+    fi
+
+    log_info "Launching iTerm2..."
+    open -a iTerm
+
+    # Wait up to 10 seconds for iTerm2 to start
+    local attempts=0
+    while (( attempts < 20 )); do
+        if iterm2_is_running; then
+            sleep 1  # Extra settle time after detection
+            log_success "iTerm2 is ready"
+            return 0
+        fi
+        sleep 0.5
+        (( attempts++ ))
+    done
+
+    log_error "Timed out waiting for iTerm2 to start"
+    return 1
 }
 
 # Create an iTerm2 window with two panes for a worktree
@@ -341,8 +368,7 @@ iterm2_create_worktree_window() {
     local session_name="$2"
     local no_claude="${3:-false}"
 
-    if ! iterm2_is_running; then
-        log_error "iTerm2 is not running. Please start iTerm2 first."
+    if ! iterm2_ensure_running; then
         return 1
     fi
 
@@ -482,11 +508,11 @@ cmd_create() {
     log_verbose "Worktree path: $wt_path"
     log_verbose "Base branch:   $BASE_BRANCH"
 
-    # Check if worktree already exists
+    # If worktree already exists, delegate to open
     if [[ -d "$wt_path" ]]; then
-        log_error "Worktree already exists at: $wt_path"
-        log_info "Use '$SCRIPT_NAME open $BRANCH' to open an iTerm2 window for it"
-        return 1
+        log_info "Worktree already exists, opening iTerm2 window"
+        cmd_open
+        return $?
     fi
 
     # Create worktrees directory if needed
@@ -495,8 +521,15 @@ cmd_create() {
     fi
 
     # Create worktree
-    if [[ "$USE_EXISTING_BRANCH" == true ]]; then
-        # Use existing branch
+    # Check if branch already exists (auto-detect --existing)
+    local branch_exists=false
+    if git -C "$repo_root" show-ref --verify --quiet "refs/heads/$BRANCH" 2>/dev/null; then
+        branch_exists=true
+    fi
+
+    if [[ "$USE_EXISTING_BRANCH" == true ]] || [[ "$branch_exists" == true ]]; then
+        [[ "$branch_exists" == true ]] && [[ "$USE_EXISTING_BRANCH" != true ]] && \
+            log_info "Branch '$BRANCH' already exists, using it"
         execute "git -C '$repo_root' worktree add '$wt_path' '$BRANCH'" \
                 "Creating worktree from existing branch '$BRANCH'"
     else
@@ -652,8 +685,7 @@ cmd_switch() {
         return 0
     fi
 
-    if ! iterm2_is_running; then
-        log_error "iTerm2 is not running"
+    if ! iterm2_ensure_running; then
         return 1
     fi
 
@@ -906,10 +938,9 @@ parse_args() {
             exit 0
             ;;
         *)
-            log_error "Unknown command: ${remaining[1]}"
-            echo
-            usage
-            exit 1
+            # Default: treat as branch name and open the worktree
+            SUBCOMMAND="open"
+            BRANCH="${remaining[1]}"
             ;;
     esac
 

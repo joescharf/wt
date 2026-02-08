@@ -10,14 +10,14 @@ Creates git worktrees with dedicated iTerm2 windows — Claude Code on top, shel
 # Create a worktree with a new branch (opens iTerm2 window)
 wt create feature/auth
 
+# Open a worktree (shorthand — same as: wt open auth)
+wt auth
+
 # List active worktrees
 wt list
 
 # Focus an existing worktree's window
 wt switch feature/auth
-
-# Re-open a window after closing it
-wt open feature/auth
 
 # Tear down everything
 wt delete feature/auth --delete-branch
@@ -37,23 +37,36 @@ This copies the script to `~/.local/bin/worktree-dev.zsh`, makes it executable, 
 
 ## Commands
 
+### `<branch>` (shorthand)
+
+Opens the iTerm2 window for an existing worktree. Any unrecognized command is treated as a branch name.
+
+```bash
+wt auth                  # Opens worktree for feature/auth (dirname match)
+wt feature/auth          # Also works with full branch name
+```
+
+Equivalent to `wt open <branch>`.
+
 ### `create <branch>`
 
-Creates a git worktree, checks out a new branch, and opens an iTerm2 window with two panes.
+Creates a git worktree, checks out a new branch, and opens an iTerm2 window with two panes. **Idempotent** — if the worktree already exists, opens it instead (same as `open`).
 
 ```bash
 wt create feature/auth                          # New branch from main
 wt create feature/auth --base develop            # New branch from develop
 wt create feature/auth --no-claude               # Don't auto-launch Claude
 wt create feature/existing-work --existing       # Use existing branch
+wt create feature/auth                          # Safe to re-run — opens existing
 ```
 
 **What happens:**
-1. Creates `<repo>.worktrees/<dirname>/` as a sibling to the main repo
-2. Opens a new iTerm2 window split horizontally:
+1. If the worktree already exists, delegates to `open`
+2. Otherwise, creates `<repo>.worktrees/<dirname>/` as a sibling to the main repo
+3. Opens a new iTerm2 window split horizontally:
    - **Top pane**: `cd <worktree> && claude`
    - **Bottom pane**: `cd <worktree>` (shell for testing)
-3. Saves session IDs to the state file for later tracking
+4. Saves session IDs to the state file for later tracking
 
 **Branch-to-dirname mapping:** `feature/foo` becomes `foo` (last path segment).
 
@@ -193,11 +206,9 @@ The script works from any directory inside a repo or worktree. It uses `git rev-
 
 ## Troubleshooting
 
-**"iTerm2 is not running"** — Start iTerm2 before using `create` or `open`. The script doesn't auto-launch iTerm2.
+**iTerm2 auto-launch** — If iTerm2 isn't running, the script automatically launches it and waits up to 10 seconds for it to be ready.
 
 **Window status shows "stale"** — The iTerm2 window was closed but state still exists. Running `open` will create a new window and update the state. Running `list` auto-prunes entries for removed worktrees.
-
-**"Worktree already exists"** — Use `open` to attach a new iTerm2 window to the existing worktree, or `delete` it first.
 
 **Branch name resolution** — You can use the full branch name (`feature/auth`) or just the dirname (`auth`). The script tries both when resolving.
 
