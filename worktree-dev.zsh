@@ -12,8 +12,8 @@ set -euo pipefail
 readonly RED='\033[0;31m'
 readonly GREEN='\033[0;32m'
 readonly YELLOW='\033[1;33m'
-readonly BLUE='\033[0;34m'
-readonly CYAN='\033[0;36m'
+readonly BLUE='\033[1;34m'
+readonly CYAN='\033[1;36m'
 readonly NC='\033[0m' # No Color
 
 # Default values
@@ -104,6 +104,7 @@ Commands:
     switch <branch>    Focus existing worktree's iTerm2 window
     delete <branch>    Close iTerm2 window + remove worktree
     open <branch>      Re-open iTerm2 window for existing worktree
+    install            Install/reinstall to ~/.local/bin and configure alias
     help               Show this help message
 
 Aliases: new=create, ls=list, go=switch, rm=delete
@@ -802,6 +803,61 @@ cmd_open() {
     log_success "iTerm2 window opened for '${CYAN}${dirname}${NC}'"
 }
 
+cmd_install() {
+    local install_dir="$HOME/.local/bin"
+    local install_path="$install_dir/$SCRIPT_NAME"
+    local source_path="${ZSH_ARGZERO}"
+    local alias_line='alias wt="worktree-dev.zsh"'
+    local zshrc="$HOME/.zshrc"
+
+    # Resolve source to absolute path
+    if [[ "$source_path" != /* ]]; then
+        source_path="$(pwd)/$source_path"
+    fi
+    source_path="${source_path:A}" # resolve symlinks
+
+    if [[ ! -f "$source_path" ]]; then
+        log_error "Cannot find source script: $source_path"
+        return 1
+    fi
+
+    # Detect running from installed copy (same file)
+    if [[ -f "$install_path" && "${install_path:A}" == "$source_path" ]]; then
+        log_warning "Running from installed copy — nothing to update"
+        log_info "To install from source, run: ~/app/utils/worktree-dev/worktree-dev.zsh install"
+
+        # Still check alias below, but skip copy
+    else
+        # Ensure install directory exists
+        if [[ ! -d "$install_dir" ]]; then
+            execute "mkdir -p '$install_dir'" "Creating $install_dir"
+        fi
+
+        # Copy script
+        execute "cp '$source_path' '$install_path'" "Installing to $install_path"
+    fi
+
+    # Make executable
+    if [[ "$DRY_RUN" == false ]]; then
+        chmod +x "$install_path"
+    fi
+
+    # Add alias to .zshrc if not present
+    if [[ -f "$zshrc" ]] && grep -qE '^alias wt=' "$zshrc"; then
+        log_info "Alias 'wt' already present in $zshrc"
+    else
+        if [[ "$DRY_RUN" == true ]]; then
+            log_warning "[DRY-RUN] Would append alias to $zshrc"
+        else
+            echo "$alias_line" >> "$zshrc"
+            log_success "Added alias 'wt' to $zshrc"
+        fi
+    fi
+
+    echo
+    log_success "Installed. Run 'source ~/.zshrc' or open a new shell to use 'wt'."
+}
+
 # ─── Argument Parsing ──────────────────────────────────────────────────────────
 
 parse_args() {
@@ -844,6 +900,7 @@ parse_args() {
         switch|go)      SUBCOMMAND="switch" ;;
         delete|rm)      SUBCOMMAND="delete" ;;
         open)           SUBCOMMAND="open" ;;
+        install)        SUBCOMMAND="install" ;;
         help)
             usage
             exit 0
@@ -932,6 +989,7 @@ main() {
         switch)  cmd_switch ;;
         delete)  cmd_delete ;;
         open)    cmd_open ;;
+        install) cmd_install ;;
     esac
 }
 

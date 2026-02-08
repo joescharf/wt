@@ -25,14 +25,15 @@ wt delete feature/auth --delete-branch
 
 ## Installation
 
-The script is installed at `~/.local/bin/worktree-dev.zsh` with a `wt` alias in `~/.zshrc`.
-
-To reinstall after changes:
-
 ```bash
-cp ~/app/utils/worktree-dev/worktree-dev.zsh ~/.local/bin/worktree-dev.zsh
-chmod +x ~/.local/bin/worktree-dev.zsh
+# From the source directory:
+./worktree-dev.zsh install
+
+# Or reinstall after making changes:
+./worktree-dev.zsh install
 ```
+
+This copies the script to `~/.local/bin/worktree-dev.zsh`, makes it executable, and idempotently adds an `alias wt="worktree-dev.zsh"` to `~/.zshrc`. Run `source ~/.zshrc` or open a new shell to pick up the alias.
 
 ## Commands
 
@@ -106,6 +107,17 @@ wt open auth             # dirname also works
 ```
 
 If the window is already open, focuses it instead.
+
+### `install`
+
+Copies the script to `~/.local/bin/` and adds the `wt` alias to `~/.zshrc`.
+
+```bash
+./worktree-dev.zsh install        # From source directory
+./worktree-dev.zsh -n install     # Dry-run to see what would happen
+```
+
+Safe to run repeatedly — skips the alias if it already exists, and overwrites the installed copy with the current source.
 
 ## Global Flags
 
