@@ -10,10 +10,11 @@ import (
 )
 
 var switchCmd = &cobra.Command{
-	Use:     "switch <branch>",
-	Aliases: []string{"go"},
-	Short:   "Focus existing worktree's iTerm2 window",
-	Args:    cobra.ExactArgs(1),
+	Use:               "switch <branch>",
+	Aliases:           []string{"go"},
+	Short:             "Focus existing worktree's iTerm2 window",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: completeWorktreeNames,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return switchRun(args[0])
 	},

@@ -16,10 +16,11 @@ var (
 )
 
 var deleteCmd = &cobra.Command{
-	Use:     "delete <branch>",
-	Aliases: []string{"rm"},
-	Short:   "Close iTerm2 window + remove worktree",
-	Args:    cobra.ExactArgs(1),
+	Use:               "delete <branch>",
+	Aliases:           []string{"rm"},
+	Short:             "Close iTerm2 window + remove worktree",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: completeWorktreeNames,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return deleteRun(args[0])
 	},

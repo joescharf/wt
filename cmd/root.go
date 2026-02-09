@@ -33,6 +33,7 @@ Each worktree gets a window with Claude on top and a shell on bottom.
 
 Shorthand: wt <branch>   (same as: wt open <branch>)`,
 	Args:              cobra.MaximumNArgs(1),
+	ValidArgsFunction: completeWorktreeNames,
 	SilenceUsage:      true,
 	SilenceErrors:     true,
 	DisableAutoGenTag: true,

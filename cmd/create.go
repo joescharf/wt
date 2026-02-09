@@ -34,6 +34,7 @@ func init() {
 	createCmd.Flags().StringVar(&createBase, "base", "", "Base branch (default from config)")
 	createCmd.Flags().BoolVar(&createNoClaude, "no-claude", false, "Don't auto-launch claude in top pane")
 	createCmd.Flags().BoolVar(&createExisting, "existing", false, "Use existing branch instead of creating new")
+	createCmd.RegisterFlagCompletionFunc("base", completeBranchNames)
 	rootCmd.AddCommand(createCmd)
 }
 
