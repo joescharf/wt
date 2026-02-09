@@ -64,6 +64,8 @@ func setupTest(t *testing.T) *testEnv {
 	createExisting = false
 	deleteForce = false
 	deleteBranchFlag = false
+	deleteAll = false
+	promptFunc = func(msg string) bool { return false } // default deny in tests
 
 	// Set viper defaults for tests
 	viper.Reset()
@@ -331,6 +333,8 @@ func TestDelete_FullCleanup(t *testing.T) {
 	os.MkdirAll(wtPath, 0755)
 
 	env.git.EXPECT().ResolveWorktree("feature/auth").Return(wtPath, nil)
+	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
+	env.git.EXPECT().HasUnpushedCommits(wtPath, "main").Return(false, nil)
 	env.git.EXPECT().WorktreeRemove(wtPath, false).
 		Run(func(path string, force bool) {
 			os.RemoveAll(path)
@@ -364,6 +368,7 @@ func TestDelete_Force(t *testing.T) {
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
 	os.MkdirAll(wtPath, 0755)
 
+	// --force skips safety checks (no IsWorktreeDirty/HasUnpushedCommits calls)
 	env.git.EXPECT().ResolveWorktree("auth").Return(wtPath, nil)
 	env.git.EXPECT().WorktreeRemove(wtPath, true).
 		Run(func(path string, force bool) {
@@ -372,6 +377,111 @@ func TestDelete_Force(t *testing.T) {
 
 	err := deleteRun("auth")
 	require.NoError(t, err)
+}
+
+func TestDelete_SafeCleanWorktree(t *testing.T) {
+	env := setupTest(t)
+	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
+	os.MkdirAll(wtPath, 0755)
+
+	env.git.EXPECT().ResolveWorktree("auth").Return(wtPath, nil)
+	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
+	env.git.EXPECT().HasUnpushedCommits(wtPath, "main").Return(false, nil)
+	env.git.EXPECT().WorktreeRemove(wtPath, false).
+		Run(func(path string, force bool) { os.RemoveAll(path) }).Return(nil)
+
+	err := deleteRun("auth")
+	require.NoError(t, err)
+	assert.Contains(t, env.out.String(), "removed")
+}
+
+func TestDelete_DirtyWorktreePromptDenied(t *testing.T) {
+	env := setupTest(t)
+	promptFunc = func(msg string) bool { return false }
+
+	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
+	os.MkdirAll(wtPath, 0755)
+
+	env.git.EXPECT().ResolveWorktree("auth").Return(wtPath, nil)
+	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(true, nil)
+
+	err := deleteRun("auth")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "aborted")
+}
+
+func TestDelete_DirtyWorktreePromptAccepted(t *testing.T) {
+	env := setupTest(t)
+	promptFunc = func(msg string) bool { return true }
+
+	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
+	os.MkdirAll(wtPath, 0755)
+
+	env.git.EXPECT().ResolveWorktree("auth").Return(wtPath, nil)
+	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(true, nil)
+	env.git.EXPECT().WorktreeRemove(wtPath, false).
+		Run(func(path string, force bool) { os.RemoveAll(path) }).Return(nil)
+
+	err := deleteRun("auth")
+	require.NoError(t, err)
+	assert.Contains(t, env.out.String(), "removed")
+}
+
+func TestDelete_UnpushedCommitsPromptDenied(t *testing.T) {
+	env := setupTest(t)
+	promptFunc = func(msg string) bool { return false }
+
+	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
+	os.MkdirAll(wtPath, 0755)
+
+	env.git.EXPECT().ResolveWorktree("auth").Return(wtPath, nil)
+	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
+	env.git.EXPECT().HasUnpushedCommits(wtPath, "main").Return(true, nil)
+
+	err := deleteRun("auth")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "aborted")
+}
+
+func TestDelete_All(t *testing.T) {
+	env := setupTest(t)
+	deleteAll = true
+	deleteForce = true // skip prompts for simplicity
+
+	wtPath1 := filepath.Join(env.dir, "repo.worktrees", "auth")
+	wtPath2 := filepath.Join(env.dir, "repo.worktrees", "api")
+	os.MkdirAll(wtPath1, 0755)
+	os.MkdirAll(wtPath2, 0755)
+
+	env.git.EXPECT().RepoRoot().Return(env.dir, nil)
+	env.git.EXPECT().WorktreeList().Return([]git.WorktreeInfo{
+		{Path: env.dir, Branch: "main"},
+		{Path: wtPath1, Branch: "feature/auth"},
+		{Path: wtPath2, Branch: "feature/api"},
+	}, nil)
+	env.git.EXPECT().WorktreeRemove(wtPath1, true).
+		Run(func(path string, force bool) { os.RemoveAll(path) }).Return(nil)
+	env.git.EXPECT().WorktreeRemove(wtPath2, true).
+		Run(func(path string, force bool) { os.RemoveAll(path) }).Return(nil)
+	env.git.EXPECT().WorktreePrune().Return(nil)
+
+	err := deleteAllRun()
+	require.NoError(t, err)
+	assert.Contains(t, env.out.String(), "Deleted 2 worktrees")
+}
+
+func TestDelete_All_NoneFound(t *testing.T) {
+	env := setupTest(t)
+	deleteAll = true
+
+	env.git.EXPECT().RepoRoot().Return(env.dir, nil)
+	env.git.EXPECT().WorktreeList().Return([]git.WorktreeInfo{
+		{Path: env.dir, Branch: "main"},
+	}, nil)
+
+	err := deleteAllRun()
+	require.NoError(t, err)
+	assert.Contains(t, env.out.String(), "No worktrees")
 }
 
 // ─── Dry-Run Tests ───────────────────────────────────────────────────────────
@@ -493,6 +603,8 @@ func TestDryRun_Delete(t *testing.T) {
 	os.MkdirAll(wtPath, 0755)
 
 	env.git.EXPECT().ResolveWorktree("auth").Return(wtPath, nil)
+	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
+	env.git.EXPECT().HasUnpushedCommits(wtPath, "main").Return(false, nil)
 
 	// Should not call WorktreeRemove
 	_ = mock.Anything
