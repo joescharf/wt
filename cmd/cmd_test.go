@@ -433,6 +433,57 @@ func TestDryRun_Switch(t *testing.T) {
 	assert.Contains(t, env.err.String(), "DRY-RUN")
 }
 
+// ─── Prune Tests ─────────────────────────────────────────────────────────────
+
+func TestPrune_CleansStaleState(t *testing.T) {
+	env := setupTest(t)
+
+	// Add state for a non-existent path
+	env.state.SetWorktree("/nonexistent/path", &state.WorktreeState{
+		Repo:   "myrepo",
+		Branch: "stale",
+	})
+
+	env.git.EXPECT().WorktreePrune().Return(nil)
+
+	err := pruneRun()
+	require.NoError(t, err)
+
+	// Verify stale entry was pruned
+	ws, _ := env.state.GetWorktree("/nonexistent/path")
+	assert.Nil(t, ws)
+	assert.Contains(t, env.out.String(), "Pruned 1 stale")
+}
+
+func TestPrune_NothingToClean(t *testing.T) {
+	env := setupTest(t)
+
+	env.git.EXPECT().WorktreePrune().Return(nil)
+
+	err := pruneRun()
+	require.NoError(t, err)
+
+	assert.Contains(t, env.out.String(), "clean")
+}
+
+func TestPrune_DryRun(t *testing.T) {
+	env := setupTest(t)
+	dryRun = true
+	env.ui.DryRun = true
+
+	env.state.SetWorktree("/nonexistent/path", &state.WorktreeState{
+		Repo:   "myrepo",
+		Branch: "stale",
+	})
+
+	// WorktreePrune should NOT be called in dry-run
+
+	err := pruneRun()
+	require.NoError(t, err)
+
+	assert.Contains(t, env.err.String(), "DRY-RUN")
+}
+
 func TestDryRun_Delete(t *testing.T) {
 	env := setupTest(t)
 	dryRun = true
