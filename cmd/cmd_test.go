@@ -1,0 +1,453 @@
+package cmd
+
+import (
+	"bytes"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
+	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
+	"github.com/joescharf/worktree-dev/internal/git"
+	gitmocks "github.com/joescharf/worktree-dev/internal/git/mocks"
+	"github.com/joescharf/worktree-dev/internal/iterm"
+	itermmocks "github.com/joescharf/worktree-dev/internal/iterm/mocks"
+	"github.com/joescharf/worktree-dev/internal/state"
+	"github.com/joescharf/worktree-dev/internal/ui"
+)
+
+// testEnv sets up mocked dependencies for cmd tests and returns cleanup func.
+type testEnv struct {
+	git   *gitmocks.MockClient
+	iterm *itermmocks.MockClient
+	state *state.Manager
+	ui    *ui.UI
+	out   *bytes.Buffer
+	err   *bytes.Buffer
+	dir   string
+}
+
+func setupTest(t *testing.T) *testEnv {
+	t.Helper()
+	dir := t.TempDir()
+	dir, _ = filepath.EvalSymlinks(dir)
+
+	mockGit := gitmocks.NewMockClient(t)
+	mockIterm := itermmocks.NewMockClient(t)
+
+	statePath := filepath.Join(dir, "state.json")
+	mgr := state.NewManager(statePath)
+
+	outBuf := &bytes.Buffer{}
+	errBuf := &bytes.Buffer{}
+	u := &ui.UI{
+		Out:    outBuf,
+		ErrOut: errBuf,
+	}
+
+	// Replace package-level vars
+	gitClient = mockGit
+	itermClient = mockIterm
+	stateMgr = mgr
+	output = u
+
+	// Reset flags
+	verbose = false
+	dryRun = false
+	openNoClaude = false
+	createBase = ""
+	createNoClaude = false
+	createExisting = false
+	deleteForce = false
+	deleteBranchFlag = false
+
+	// Set viper defaults for tests
+	viper.Reset()
+	viper.SetDefault("base_branch", "main")
+	viper.SetDefault("no_claude", false)
+
+	return &testEnv{
+		git:   mockGit,
+		iterm: mockIterm,
+		state: mgr,
+		ui:    u,
+		out:   outBuf,
+		err:   errBuf,
+		dir:   dir,
+	}
+}
+
+// ─── Create Tests ────────────────────────────────────────────────────────────
+
+func TestCreate_NewBranch(t *testing.T) {
+	env := setupTest(t)
+	wtDir := filepath.Join(env.dir, "repo.worktrees")
+	wtPath := filepath.Join(wtDir, "auth")
+
+	env.git.EXPECT().RepoName().Return("myrepo", nil)
+	env.git.EXPECT().WorktreesDir().Return(wtDir, nil)
+	env.git.EXPECT().BranchExists("feature/auth").Return(false, nil)
+	env.git.EXPECT().WorktreeAdd(wtPath, "feature/auth", "main", true).
+		Run(func(path, branch, base string, newBranch bool) {
+			os.MkdirAll(path, 0755) // simulate worktree creation
+		}).Return(nil)
+
+	env.iterm.EXPECT().CreateWorktreeWindow(wtPath, "wt:myrepo:auth", false).
+		Return(&iterm.SessionIDs{ClaudeSessionID: "c-123", ShellSessionID: "s-456"}, nil)
+
+	err := createRun("feature/auth")
+	require.NoError(t, err)
+
+	// Verify state was written
+	ws, err := env.state.GetWorktree(wtPath)
+	require.NoError(t, err)
+	require.NotNil(t, ws)
+	assert.Equal(t, "feature/auth", ws.Branch)
+	assert.Equal(t, "c-123", ws.ClaudeSessionID)
+	assert.Equal(t, "s-456", ws.ShellSessionID)
+
+	assert.Contains(t, env.out.String(), "Worktree ready")
+}
+
+func TestCreate_ExistingWorktree(t *testing.T) {
+	env := setupTest(t)
+	wtDir := filepath.Join(env.dir, "repo.worktrees")
+	wtPath := filepath.Join(wtDir, "auth")
+	os.MkdirAll(wtPath, 0755)
+
+	env.git.EXPECT().RepoName().Return("myrepo", nil).Times(2) // once for create, once for open
+	env.git.EXPECT().WorktreesDir().Return(wtDir, nil)
+	env.git.EXPECT().ResolveWorktree("feature/auth").Return(wtPath, nil)
+	env.git.EXPECT().CurrentBranch(wtPath).Return("feature/auth", nil)
+
+	// open will be called since worktree exists
+	env.iterm.EXPECT().CreateWorktreeWindow(wtPath, "wt:myrepo:auth", false).
+		Return(&iterm.SessionIDs{ClaudeSessionID: "c-123", ShellSessionID: "s-456"}, nil)
+
+	err := createRun("feature/auth")
+	require.NoError(t, err)
+
+	assert.Contains(t, env.out.String(), "Worktree already exists")
+}
+
+func TestCreate_ExistingBranch(t *testing.T) {
+	env := setupTest(t)
+	wtDir := filepath.Join(env.dir, "repo.worktrees")
+	wtPath := filepath.Join(wtDir, "auth")
+
+	env.git.EXPECT().RepoName().Return("myrepo", nil)
+	env.git.EXPECT().WorktreesDir().Return(wtDir, nil)
+	env.git.EXPECT().BranchExists("feature/auth").Return(true, nil)
+	env.git.EXPECT().WorktreeAdd(wtPath, "feature/auth", "", false).
+		Run(func(path, branch, base string, newBranch bool) {
+			os.MkdirAll(path, 0755)
+		}).Return(nil)
+
+	env.iterm.EXPECT().CreateWorktreeWindow(wtPath, "wt:myrepo:auth", false).
+		Return(&iterm.SessionIDs{ClaudeSessionID: "c-123", ShellSessionID: "s-456"}, nil)
+
+	err := createRun("feature/auth")
+	require.NoError(t, err)
+
+	assert.Contains(t, env.out.String(), "already exists, using it")
+}
+
+// ─── List Tests ──────────────────────────────────────────────────────────────
+
+func TestList_WithWorktrees(t *testing.T) {
+	env := setupTest(t)
+	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
+	os.MkdirAll(wtPath, 0755)
+
+	env.git.EXPECT().RepoName().Return("myrepo", nil)
+	env.git.EXPECT().RepoRoot().Return(env.dir, nil)
+	env.git.EXPECT().WorktreeList().Return([]git.WorktreeInfo{
+		{Path: env.dir, Branch: "main", HEAD: "abc123"},
+		{Path: wtPath, Branch: "feature/auth", HEAD: "def456"},
+	}, nil)
+
+	// Set up state so we can check window status
+	env.state.SetWorktree(wtPath, &state.WorktreeState{
+		Repo:            "myrepo",
+		Branch:          "feature/auth",
+		ClaudeSessionID: "c-123",
+		CreatedAt:       state.FlexTime{Time: time.Now().UTC().Add(-2 * time.Hour)},
+	})
+
+	env.iterm.EXPECT().IsRunning().Return(true)
+	env.iterm.EXPECT().SessionExists("c-123").Return(true)
+
+	err := listRun()
+	require.NoError(t, err)
+
+	out := env.out.String()
+	assert.Contains(t, out, "feature/auth")
+	assert.Contains(t, out, "open")
+	assert.Contains(t, out, "2h")
+}
+
+func TestList_PrunesStaleState(t *testing.T) {
+	env := setupTest(t)
+
+	// Add state for a non-existent path
+	env.state.SetWorktree("/nonexistent/path", &state.WorktreeState{
+		Repo:   "myrepo",
+		Branch: "stale",
+	})
+
+	env.git.EXPECT().RepoName().Return("myrepo", nil)
+	env.git.EXPECT().RepoRoot().Return(env.dir, nil)
+	env.git.EXPECT().WorktreeList().Return([]git.WorktreeInfo{
+		{Path: env.dir, Branch: "main", HEAD: "abc123"},
+	}, nil)
+
+	err := listRun()
+	require.NoError(t, err)
+
+	// Verify stale entry was pruned
+	ws, _ := env.state.GetWorktree("/nonexistent/path")
+	assert.Nil(t, ws)
+
+	assert.Contains(t, env.out.String(), "Pruned 1 stale")
+}
+
+// ─── Switch Tests ────────────────────────────────────────────────────────────
+
+func TestSwitch_FocusesWindow(t *testing.T) {
+	env := setupTest(t)
+	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
+	os.MkdirAll(wtPath, 0755)
+
+	env.git.EXPECT().ResolveWorktree("feature/auth").Return(wtPath, nil)
+	env.iterm.EXPECT().EnsureRunning().Return(nil)
+	env.iterm.EXPECT().SessionExists("c-123").Return(true)
+	env.iterm.EXPECT().FocusWindow("c-123").Return(nil)
+
+	env.state.SetWorktree(wtPath, &state.WorktreeState{
+		Repo:            "myrepo",
+		Branch:          "feature/auth",
+		ClaudeSessionID: "c-123",
+	})
+
+	err := switchRun("feature/auth")
+	require.NoError(t, err)
+	assert.Contains(t, env.out.String(), "Focused")
+}
+
+func TestSwitch_StaleSession(t *testing.T) {
+	env := setupTest(t)
+	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
+	os.MkdirAll(wtPath, 0755)
+
+	env.git.EXPECT().ResolveWorktree("feature/auth").Return(wtPath, nil)
+	env.iterm.EXPECT().EnsureRunning().Return(nil)
+	env.iterm.EXPECT().SessionExists("c-123").Return(false)
+
+	env.state.SetWorktree(wtPath, &state.WorktreeState{
+		Repo:            "myrepo",
+		Branch:          "feature/auth",
+		ClaudeSessionID: "c-123",
+	})
+
+	err := switchRun("feature/auth")
+	require.NoError(t, err)
+	assert.Contains(t, env.err.String(), "no longer exists")
+}
+
+// ─── Open Tests ──────────────────────────────────────────────────────────────
+
+func TestOpen_AlreadyOpen(t *testing.T) {
+	env := setupTest(t)
+	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
+	os.MkdirAll(wtPath, 0755)
+
+	env.git.EXPECT().RepoName().Return("myrepo", nil)
+	env.git.EXPECT().ResolveWorktree("feature/auth").Return(wtPath, nil)
+	env.iterm.EXPECT().IsRunning().Return(true)
+	env.iterm.EXPECT().SessionExists("c-123").Return(true)
+	env.iterm.EXPECT().FocusWindow("c-123").Return(nil)
+
+	env.state.SetWorktree(wtPath, &state.WorktreeState{
+		Repo:            "myrepo",
+		Branch:          "feature/auth",
+		ClaudeSessionID: "c-123",
+	})
+
+	err := openRun("feature/auth")
+	require.NoError(t, err)
+	assert.Contains(t, env.out.String(), "already open")
+}
+
+func TestOpen_NewWindow(t *testing.T) {
+	env := setupTest(t)
+	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
+	os.MkdirAll(wtPath, 0755)
+
+	env.git.EXPECT().RepoName().Return("myrepo", nil)
+	env.git.EXPECT().ResolveWorktree("feature/auth").Return(wtPath, nil)
+	env.git.EXPECT().CurrentBranch(wtPath).Return("feature/auth", nil)
+
+	env.iterm.EXPECT().CreateWorktreeWindow(wtPath, "wt:myrepo:auth", false).
+		Return(&iterm.SessionIDs{ClaudeSessionID: "c-new", ShellSessionID: "s-new"}, nil)
+
+	err := openRun("feature/auth")
+	require.NoError(t, err)
+
+	ws, _ := env.state.GetWorktree(wtPath)
+	require.NotNil(t, ws)
+	assert.Equal(t, "c-new", ws.ClaudeSessionID)
+	assert.Contains(t, env.out.String(), "window opened")
+}
+
+func TestOpen_BareShorthand(t *testing.T) {
+	// wt <branch> delegates to openRun
+	env := setupTest(t)
+	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
+	os.MkdirAll(wtPath, 0755)
+
+	env.git.EXPECT().RepoName().Return("myrepo", nil)
+	env.git.EXPECT().ResolveWorktree("auth").Return(wtPath, nil)
+	env.git.EXPECT().CurrentBranch(wtPath).Return("feature/auth", nil)
+
+	env.iterm.EXPECT().CreateWorktreeWindow(wtPath, "wt:myrepo:auth", false).
+		Return(&iterm.SessionIDs{ClaudeSessionID: "c-new", ShellSessionID: "s-new"}, nil)
+
+	// This simulates what root RunE does
+	err := openRun("auth")
+	require.NoError(t, err)
+}
+
+// ─── Delete Tests ────────────────────────────────────────────────────────────
+
+func TestDelete_FullCleanup(t *testing.T) {
+	env := setupTest(t)
+	deleteBranchFlag = true
+
+	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
+	os.MkdirAll(wtPath, 0755)
+
+	env.git.EXPECT().ResolveWorktree("feature/auth").Return(wtPath, nil)
+	env.git.EXPECT().WorktreeRemove(wtPath, false).
+		Run(func(path string, force bool) {
+			os.RemoveAll(path)
+		}).Return(nil)
+	env.git.EXPECT().BranchDelete("feature/auth", false).Return(nil)
+
+	env.iterm.EXPECT().IsRunning().Return(true)
+	env.iterm.EXPECT().SessionExists("c-123").Return(true)
+	env.iterm.EXPECT().CloseWindow("c-123").Return(nil)
+
+	env.state.SetWorktree(wtPath, &state.WorktreeState{
+		Repo:            "myrepo",
+		Branch:          "feature/auth",
+		ClaudeSessionID: "c-123",
+	})
+
+	err := deleteRun("feature/auth")
+	require.NoError(t, err)
+
+	// Verify state was removed
+	ws, _ := env.state.GetWorktree(wtPath)
+	assert.Nil(t, ws)
+
+	assert.Contains(t, env.out.String(), "removed")
+}
+
+func TestDelete_Force(t *testing.T) {
+	env := setupTest(t)
+	deleteForce = true
+
+	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
+	os.MkdirAll(wtPath, 0755)
+
+	env.git.EXPECT().ResolveWorktree("auth").Return(wtPath, nil)
+	env.git.EXPECT().WorktreeRemove(wtPath, true).
+		Run(func(path string, force bool) {
+			os.RemoveAll(path)
+		}).Return(nil)
+
+	err := deleteRun("auth")
+	require.NoError(t, err)
+}
+
+// ─── Dry-Run Tests ───────────────────────────────────────────────────────────
+
+func TestDryRun_Create(t *testing.T) {
+	env := setupTest(t)
+	dryRun = true
+	env.ui.DryRun = true
+
+	wtDir := filepath.Join(env.dir, "repo.worktrees")
+
+	env.git.EXPECT().RepoName().Return("myrepo", nil)
+	env.git.EXPECT().WorktreesDir().Return(wtDir, nil)
+	env.git.EXPECT().BranchExists("feature/dry").Return(false, nil)
+
+	err := createRun("feature/dry")
+	require.NoError(t, err)
+
+	// Verify no side effects
+	assert.NoDirExists(t, filepath.Join(wtDir, "dry"))
+	ws, _ := env.state.GetWorktree(filepath.Join(wtDir, "dry"))
+	assert.Nil(t, ws)
+
+	assert.Contains(t, env.err.String(), "DRY-RUN")
+}
+
+func TestDryRun_Open(t *testing.T) {
+	env := setupTest(t)
+	dryRun = true
+	env.ui.DryRun = true
+
+	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
+	os.MkdirAll(wtPath, 0755)
+
+	env.git.EXPECT().RepoName().Return("myrepo", nil)
+	env.git.EXPECT().ResolveWorktree("auth").Return(wtPath, nil)
+
+	err := openRun("auth")
+	require.NoError(t, err)
+	assert.Contains(t, env.err.String(), "DRY-RUN")
+}
+
+func TestDryRun_Switch(t *testing.T) {
+	env := setupTest(t)
+	dryRun = true
+	env.ui.DryRun = true
+
+	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
+	os.MkdirAll(wtPath, 0755)
+
+	env.git.EXPECT().ResolveWorktree("auth").Return(wtPath, nil)
+
+	env.state.SetWorktree(wtPath, &state.WorktreeState{
+		ClaudeSessionID: "c-123",
+	})
+
+	err := switchRun("auth")
+	require.NoError(t, err)
+	assert.Contains(t, env.err.String(), "DRY-RUN")
+}
+
+func TestDryRun_Delete(t *testing.T) {
+	env := setupTest(t)
+	dryRun = true
+	env.ui.DryRun = true
+
+	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
+	os.MkdirAll(wtPath, 0755)
+
+	env.git.EXPECT().ResolveWorktree("auth").Return(wtPath, nil)
+
+	// Should not call WorktreeRemove
+	_ = mock.Anything
+
+	err := deleteRun("auth")
+	require.NoError(t, err)
+	assert.Contains(t, env.err.String(), "DRY-RUN")
+	assert.DirExists(t, wtPath) // dir not removed
+}
