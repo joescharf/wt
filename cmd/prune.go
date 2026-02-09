@@ -30,6 +30,20 @@ func pruneRun() error {
 		output.Info("Pruned %d stale state entries", pruned)
 	}
 
+	// Prune stale Claude trust entries
+	if claudeTrust != nil {
+		wtDir, err := gitClient.WorktreesDir()
+		if err == nil {
+			trustPruned, err := claudeTrust.PruneProjects(wtDir)
+			if err != nil {
+				output.Warning("Failed to prune Claude trust entries: %v", err)
+			} else if trustPruned > 0 {
+				output.Info("Pruned %d stale Claude trust entries", trustPruned)
+				pruned += trustPruned
+			}
+		}
+	}
+
 	// Run git worktree prune
 	if dryRun {
 		output.DryRunMsg("Would run git worktree prune")

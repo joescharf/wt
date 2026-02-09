@@ -115,6 +115,15 @@ func createRun(branch string) error {
 	}
 	output.Success("Git worktree created")
 
+	// Pre-approve Claude Code trust for this directory
+	if claudeTrust != nil {
+		if added, err := claudeTrust.TrustProject(wtPath); err != nil {
+			output.Warning("Failed to set Claude trust: %v", err)
+		} else if added {
+			output.VerboseLog("Claude trust set for %s", wtPath)
+		}
+	}
+
 	// Create iTerm2 window
 	sessionName := fmt.Sprintf("wt:%s:%s", repoName, dirname)
 	output.Info("Creating iTerm2 window (session: %s)", ui.Cyan(sessionName))

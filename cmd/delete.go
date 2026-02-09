@@ -169,6 +169,13 @@ func deleteRun(branch string) error {
 	// Remove state entry
 	if !dryRun {
 		_ = stateMgr.RemoveWorktree(wtPath)
+
+		// Remove Claude trust entry
+		if claudeTrust != nil {
+			if err := claudeTrust.UntrustProject(wtPath); err != nil {
+				output.Warning("Failed to remove Claude trust: %v", err)
+			}
+		}
 	}
 
 	fmt.Fprintln(output.Out)
@@ -246,6 +253,9 @@ func deleteAllRun() error {
 		}
 
 		_ = stateMgr.RemoveWorktree(wt.Path)
+		if claudeTrust != nil {
+			_ = claudeTrust.UntrustProject(wt.Path)
+		}
 		output.Success("Removed '%s'", ui.Cyan(dirname))
 		deleted++
 	}

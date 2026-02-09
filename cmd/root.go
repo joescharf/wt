@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/joescharf/wt/internal/claude"
 	"github.com/joescharf/wt/internal/git"
 	"github.com/joescharf/wt/internal/iterm"
 	"github.com/joescharf/wt/internal/state"
@@ -19,6 +20,7 @@ var (
 	gitClient   git.Client
 	itermClient iterm.Client
 	stateMgr    *state.Manager
+	claudeTrust *claude.TrustManager
 	output      *ui.UI
 
 	verbose bool
@@ -100,4 +102,8 @@ func initDeps() {
 
 	gitClient = git.NewClient()
 	itermClient = iterm.NewClient()
+
+	if claudePath, err := claude.DefaultPath(); err == nil {
+		claudeTrust = claude.NewTrustManager(claudePath)
+	}
 }

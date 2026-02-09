@@ -45,8 +45,10 @@ func openRun(branch string) error {
 	dirname := filepath.Base(wtPath)
 
 	if !isDirectory(wtPath) {
-		output.Error("Worktree not found: %s", wtPath)
-		output.Info("Use 'wt create %s' to create it", branch)
+		output.Warning("Worktree not found: %s", wtPath)
+		if promptFunc(fmt.Sprintf("Create worktree '%s'?", branch)) {
+			return createRun(branch)
+		}
 		return fmt.Errorf("worktree not found: %s", wtPath)
 	}
 
@@ -65,6 +67,15 @@ func openRun(branch string) error {
 	if dryRun {
 		output.DryRunMsg("Would open iTerm2 window for %s", wtPath)
 		return nil
+	}
+
+	// Pre-approve Claude Code trust for this directory
+	if claudeTrust != nil {
+		if added, err := claudeTrust.TrustProject(wtPath); err != nil {
+			output.Warning("Failed to set Claude trust: %v", err)
+		} else if added {
+			output.VerboseLog("Claude trust set for %s", wtPath)
+		}
 	}
 
 	sessionName := fmt.Sprintf("wt:%s:%s", repoName, dirname)
