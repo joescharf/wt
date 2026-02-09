@@ -173,3 +173,111 @@ func TestWorktreeLifecycle_Integration(t *testing.T) {
 	require.NoError(t, err)
 	assert.NoDirExists(t, wtPath)
 }
+
+func TestBranchList_Integration(t *testing.T) {
+	repoDir := initTestRepo(t)
+
+	// Create some branches
+	for _, branch := range []string{"feature/auth", "bugfix/login"} {
+		cmd := exec.Command("git", "-C", repoDir, "branch", branch)
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, "create branch %s: %s", branch, string(out))
+	}
+
+	orig, err := os.Getwd()
+	require.NoError(t, err)
+	t.Cleanup(func() { os.Chdir(orig) })
+	os.Chdir(repoDir)
+
+	client := NewClient()
+	branches, err := client.BranchList()
+	require.NoError(t, err)
+
+	assert.GreaterOrEqual(t, len(branches), 3)
+	assert.Contains(t, branches, "feature/auth")
+	assert.Contains(t, branches, "bugfix/login")
+}
+
+func TestIsWorktreeDirty_Integration(t *testing.T) {
+	repoDir := initTestRepo(t)
+
+	orig, err := os.Getwd()
+	require.NoError(t, err)
+	t.Cleanup(func() { os.Chdir(orig) })
+	os.Chdir(repoDir)
+
+	client := NewClient()
+
+	// Clean repo
+	dirty, err := client.IsWorktreeDirty(repoDir)
+	require.NoError(t, err)
+	assert.False(t, dirty)
+
+	// Create an untracked file
+	err = os.WriteFile(filepath.Join(repoDir, "dirty.txt"), []byte("dirty"), 0644)
+	require.NoError(t, err)
+
+	dirty, err = client.IsWorktreeDirty(repoDir)
+	require.NoError(t, err)
+	assert.True(t, dirty)
+}
+
+func TestHasUnpushedCommits_Integration(t *testing.T) {
+	repoDir := initTestRepo(t)
+
+	orig, err := os.Getwd()
+	require.NoError(t, err)
+	t.Cleanup(func() { os.Chdir(orig) })
+	os.Chdir(repoDir)
+
+	client := NewClient()
+
+	// Create a worktree with a branch
+	wtDir := repoDir + ".worktrees"
+	err = os.MkdirAll(wtDir, 0755)
+	require.NoError(t, err)
+
+	wtPath := filepath.Join(wtDir, "test-branch")
+	err = client.WorktreeAdd(wtPath, "test-branch", "HEAD", true)
+	require.NoError(t, err)
+
+	// Get the main branch name
+	mainBranch, err := client.CurrentBranch(repoDir)
+	require.NoError(t, err)
+
+	// No unpushed commits (same as base)
+	unpushed, err := client.HasUnpushedCommits(wtPath, mainBranch)
+	require.NoError(t, err)
+	assert.False(t, unpushed)
+
+	// Add a commit in the worktree
+	testFile := filepath.Join(wtPath, "new.txt")
+	err = os.WriteFile(testFile, []byte("new"), 0644)
+	require.NoError(t, err)
+
+	cmd := exec.Command("git", "-C", wtPath, "add", ".")
+	require.NoError(t, cmd.Run())
+	cmd = exec.Command("git", "-C", wtPath, "commit", "-m", "new commit")
+	cmd.Env = append(os.Environ(), "GIT_AUTHOR_NAME=Test", "GIT_AUTHOR_EMAIL=test@test.com", "GIT_COMMITTER_NAME=Test", "GIT_COMMITTER_EMAIL=test@test.com")
+	require.NoError(t, cmd.Run())
+
+	// Now has unpushed commits relative to main
+	unpushed, err = client.HasUnpushedCommits(wtPath, mainBranch)
+	require.NoError(t, err)
+	assert.True(t, unpushed)
+}
+
+func TestWorktreePrune_Integration(t *testing.T) {
+	repoDir := initTestRepo(t)
+
+	orig, err := os.Getwd()
+	require.NoError(t, err)
+	t.Cleanup(func() { os.Chdir(orig) })
+	os.Chdir(repoDir)
+
+	client := NewClient()
+
+	// Should succeed even with nothing to prune
+	err = client.WorktreePrune()
+	require.NoError(t, err)
+}
