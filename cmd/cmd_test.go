@@ -211,7 +211,7 @@ func TestList_WithWorktrees(t *testing.T) {
 	out := env.out.String()
 	assert.Contains(t, out, "feature/auth")
 	assert.Contains(t, out, "open")
-	assert.Contains(t, out, "+2")
+	assert.Contains(t, out, "↑2")
 	assert.Contains(t, out, "2h")
 }
 
@@ -254,7 +254,7 @@ func TestList_StatusDirtyAndBehind(t *testing.T) {
 	require.NoError(t, err)
 	out := env.out.String()
 	assert.Contains(t, out, "dirty")
-	assert.Contains(t, out, "-4")
+	assert.Contains(t, out, "↓4")
 }
 
 func TestList_StatusClean(t *testing.T) {
@@ -294,7 +294,7 @@ func TestList_StatusBehind(t *testing.T) {
 
 	err := listRun()
 	require.NoError(t, err)
-	assert.Contains(t, env.out.String(), "-5")
+	assert.Contains(t, env.out.String(), "↓5")
 }
 
 func TestList_StatusAheadAndBehind(t *testing.T) {
@@ -315,8 +315,8 @@ func TestList_StatusAheadAndBehind(t *testing.T) {
 	err := listRun()
 	require.NoError(t, err)
 	out := env.out.String()
-	assert.Contains(t, out, "+2")
-	assert.Contains(t, out, "-3")
+	assert.Contains(t, out, "↑2")
+	assert.Contains(t, out, "↓3")
 }
 
 func TestList_PrunesStaleState(t *testing.T) {
@@ -1462,7 +1462,7 @@ func TestSync_Success_WithRemote(t *testing.T) {
 	require.NoError(t, err)
 
 	out := env.out.String()
-	assert.Contains(t, out, "+2 -3")
+	assert.Contains(t, out, "↑2 ↓3")
 	assert.Contains(t, out, "Merging 3 commit(s)")
 	assert.Contains(t, out, "Synced")
 	assert.Contains(t, out, "feature/auth")
@@ -1490,7 +1490,7 @@ func TestSync_Success_NoRemote(t *testing.T) {
 	require.NoError(t, err)
 
 	out := env.out.String()
-	assert.Contains(t, out, "-5")
+	assert.Contains(t, out, "↓5")
 	assert.Contains(t, out, "Merging 5 commit(s)")
 	assert.Contains(t, out, "Synced")
 }

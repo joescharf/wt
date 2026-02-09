@@ -146,11 +146,11 @@ func syncRun(branch string) error {
 func formatSyncStatus(ahead, behind int) string {
 	switch {
 	case ahead > 0 && behind > 0:
-		return fmt.Sprintf("+%d -%d", ahead, behind)
+		return fmt.Sprintf("↑%d ↓%d", ahead, behind)
 	case ahead > 0:
-		return fmt.Sprintf("+%d", ahead)
+		return fmt.Sprintf("↑%d", ahead)
 	case behind > 0:
-		return fmt.Sprintf("-%d", behind)
+		return fmt.Sprintf("↓%d", behind)
 	default:
 		return "clean"
 	}

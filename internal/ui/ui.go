@@ -72,14 +72,14 @@ func StatusColor(status string) string {
 }
 
 // GitStatusColor returns the string colored by git status.
-// "dirty" (with or without +N/-N) is red, "+N"/"-N" without dirty is yellow, "clean" is green.
+// "dirty" (with or without ↑N/↓N) is red, "↑N"/"↓N" without dirty is yellow, "clean" is green.
 func GitStatusColor(status string) string {
 	switch {
 	case strings.HasPrefix(status, "dirty"):
 		return red(status)
 	case status == "clean":
 		return green(status)
-	case strings.HasPrefix(status, "+") || strings.HasPrefix(status, "-"):
+	case strings.Contains(status, "↑") || strings.Contains(status, "↓"):
 		return yellow(status)
 	default:
 		return status

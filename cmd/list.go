@@ -96,10 +96,10 @@ func listRun() error {
 				parts = append(parts, "dirty")
 			}
 			if ahead > 0 {
-				parts = append(parts, fmt.Sprintf("+%d", ahead))
+				parts = append(parts, fmt.Sprintf("↑%d", ahead))
 			}
 			if behind > 0 {
-				parts = append(parts, fmt.Sprintf("-%d", behind))
+				parts = append(parts, fmt.Sprintf("↓%d", behind))
 			}
 			if len(parts) > 0 {
 				gitStatus = strings.Join(parts, " ")
