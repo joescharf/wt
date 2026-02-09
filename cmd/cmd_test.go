@@ -12,12 +12,12 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/joescharf/worktree-dev/internal/git"
-	gitmocks "github.com/joescharf/worktree-dev/internal/git/mocks"
-	"github.com/joescharf/worktree-dev/internal/iterm"
-	itermmocks "github.com/joescharf/worktree-dev/internal/iterm/mocks"
-	"github.com/joescharf/worktree-dev/internal/state"
-	"github.com/joescharf/worktree-dev/internal/ui"
+	"github.com/joescharf/wt/internal/git"
+	gitmocks "github.com/joescharf/wt/internal/git/mocks"
+	"github.com/joescharf/wt/internal/iterm"
+	itermmocks "github.com/joescharf/wt/internal/iterm/mocks"
+	"github.com/joescharf/wt/internal/state"
+	"github.com/joescharf/wt/internal/ui"
 )
 
 // testEnv sets up mocked dependencies for cmd tests and returns cleanup func.

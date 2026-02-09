@@ -10,7 +10,7 @@ import (
 	"github.com/olekukonko/tablewriter/tw"
 	"github.com/spf13/cobra"
 
-	"github.com/joescharf/worktree-dev/internal/ui"
+	"github.com/joescharf/wt/internal/ui"
 )
 
 var listCmd = &cobra.Command{

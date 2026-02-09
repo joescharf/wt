@@ -48,6 +48,6 @@ brews:
   - repository:
       owner: joescharf
       name: homebrew-tap
-    homepage: "https://github.com/joescharf/worktree-dev"
+    homepage: "https://github.com/joescharf/wt"
     description: "Git worktree manager with iTerm2 integration"
     license: "MIT"

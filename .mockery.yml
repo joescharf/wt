@@ -1,6 +1,6 @@
 with-expecter: true
 packages:
-  github.com/joescharf/worktree-dev:
+  github.com/joescharf/wt:
     config:
       recursive: true
       all: true

@@ -1,6 +1,6 @@
 package main
 
-import "github.com/joescharf/worktree-dev/cmd"
+import "github.com/joescharf/wt/cmd"
 
 // Set by goreleaser ldflags
 var (

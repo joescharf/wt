@@ -1,4 +1,4 @@
-module github.com/joescharf/worktree-dev
+module github.com/joescharf/wt
 
 go 1.25.5
 

@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	git "github.com/joescharf/worktree-dev/internal/git"
+	git "github.com/joescharf/wt/internal/git"
 	mock "github.com/stretchr/testify/mock"
 )
 

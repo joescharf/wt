@@ -1,4 +1,4 @@
-# worktree-dev
+# wt
 
 Git Worktree Manager with iTerm2 Integration.
 
@@ -30,10 +30,10 @@ wt prune
 
 ```bash
 # Via Homebrew tap
-brew install joescharf/tap/worktree-dev
+brew install joescharf/tap/wt
 
 # Or build from source
-go install github.com/joescharf/worktree-dev@latest
+go install github.com/joescharf/wt@latest
 ```
 
 ## Shell Completions
@@ -90,6 +90,7 @@ wt create feature/auth                          # Safe to re-run — opens exist
 ```
 
 **What happens:**
+
 1. If the worktree already exists, delegates to `open`
 2. Otherwise, creates `<repo>.worktrees/<dirname>/` as a sibling to the main repo
 3. Opens a new iTerm2 window split horizontally:
@@ -109,6 +110,7 @@ wt ls        # alias
 ```
 
 Output columns:
+
 - **BRANCH** — git branch name
 - **PATH** — worktree directory path
 - **WINDOW** — `open` (green), `stale` (yellow, window closed but state exists), or `closed` (red)
@@ -143,11 +145,11 @@ wt delete --all --force                  # Delete all worktrees without promptin
 wt rm feature/auth                       # alias
 ```
 
-| Flag | Description |
-|------|-------------|
-| `--force` | Skip safety checks (dirty/unpushed), force removal |
+| Flag              | Description                                            |
+| ----------------- | ------------------------------------------------------ |
+| `--force`         | Skip safety checks (dirty/unpushed), force removal     |
 | `--delete-branch` | Also delete the git branch after removing the worktree |
-| `--all` | Delete all worktrees (excludes main repo) |
+| `--all`           | Delete all worktrees (excludes main repo)              |
 
 ### `open <branch>`
 
@@ -191,19 +193,19 @@ wt version
 
 ## Global Flags
 
-| Flag | Description |
-|------|-------------|
+| Flag            | Description                                         |
+| --------------- | --------------------------------------------------- |
 | `-v, --verbose` | Show detailed output (commands, paths, session IDs) |
-| `-n, --dry-run` | Show what would happen without making changes |
-| `-h, --help` | Show usage |
+| `-n, --dry-run` | Show what would happen without making changes       |
+| `-h, --help`    | Show usage                                          |
 
 ## Configuration
 
-Configuration file (optional): `~/.config/worktree-dev/config.yaml`
+Configuration file (optional): `~/.config/wt/config.yaml`
 
 ```yaml
-base_branch: main      # Default base branch for new worktrees
-no_claude: false        # Skip launching Claude in top pane
+base_branch: main # Default base branch for new worktrees
+no_claude: false # Skip launching Claude in top pane
 ```
 
 Environment variables (prefix `WT_`):
@@ -231,19 +233,19 @@ This convention keeps worktrees visually grouped with their repo while avoiding 
 
 ## State File
 
-Session tracking is stored at `~/.config/worktree-dev/state.json`:
+Session tracking is stored at `~/.config/wt/state.json`:
 
 ```json
 {
-  "worktrees": {
-    "/path/to/repo.worktrees/auth": {
-      "repo": "dbsnapper-agent",
-      "branch": "feature/auth",
-      "claude_session_id": "...",
-      "shell_session_id": "...",
-      "created_at": "2026-02-08T12:00:00Z"
-    }
-  }
+	"worktrees": {
+		"/path/to/repo.worktrees/auth": {
+			"repo": "dbsnapper-agent",
+			"branch": "feature/auth",
+			"claude_session_id": "...",
+			"shell_session_id": "...",
+			"created_at": "2026-02-08T12:00:00Z"
+		}
+	}
 }
 ```
 
@@ -272,11 +274,11 @@ Sessions are named `wt:<repo>:<dirname>:<pane>` for visual identification. The t
 
 ## Dependencies
 
-| Dependency | Purpose |
-|------------|---------|
-| `git` | Worktree operations |
+| Dependency  | Purpose                                          |
+| ----------- | ------------------------------------------------ |
+| `git`       | Worktree operations                              |
 | `osascript` | iTerm2 AppleScript automation (built into macOS) |
-| iTerm2 | Terminal emulator |
+| iTerm2      | Terminal emulator                                |
 
 ## Troubleshooting
 

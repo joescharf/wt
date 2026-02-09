@@ -10,8 +10,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/joescharf/worktree-dev/internal/git"
-	"github.com/joescharf/worktree-dev/internal/ui"
+	"github.com/joescharf/wt/internal/git"
+	"github.com/joescharf/wt/internal/ui"
 )
 
 var (

@@ -331,7 +331,7 @@ git commit -m "feat: add WorktreePrune to git.Client interface"
 **Step 1: Run mockery**
 
 ```bash
-cd /Users/joescharf/app/utils/worktree-dev && mockery
+cd /Users/joescharf/app/utils/wt && mockery
 ```
 
 **Step 2: Verify build**

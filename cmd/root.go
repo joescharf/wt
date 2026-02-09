@@ -8,10 +8,10 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/joescharf/worktree-dev/internal/git"
-	"github.com/joescharf/worktree-dev/internal/iterm"
-	"github.com/joescharf/worktree-dev/internal/state"
-	"github.com/joescharf/worktree-dev/internal/ui"
+	"github.com/joescharf/wt/internal/git"
+	"github.com/joescharf/wt/internal/iterm"
+	"github.com/joescharf/wt/internal/state"
+	"github.com/joescharf/wt/internal/ui"
 )
 
 // Package-level shared dependencies, initialized in cobra.OnInitialize.
@@ -72,7 +72,14 @@ func initConfig() {
 		os.Exit(1)
 	}
 
-	configDir := filepath.Join(home, ".config", "worktree-dev")
+	// One-time migration: rename old config dir to new
+	oldConfigDir := filepath.Join(home, ".config", "worktree-dev")
+	configDir := filepath.Join(home, ".config", "wt")
+	if info, err := os.Stat(oldConfigDir); err == nil && info.IsDir() {
+		if _, err := os.Stat(configDir); os.IsNotExist(err) {
+			os.Rename(oldConfigDir, configDir)
+		}
+	}
 	viper.AddConfigPath(configDir)
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
