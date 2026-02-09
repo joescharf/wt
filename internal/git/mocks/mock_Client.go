@@ -180,6 +180,120 @@ func (_c *MockClient_BranchList_Call) RunAndReturn(run func() ([]string, error))
 	return _c
 }
 
+// CommitsAhead provides a mock function with given fields: worktreePath, baseBranch
+func (_m *MockClient) CommitsAhead(worktreePath string, baseBranch string) (int, error) {
+	ret := _m.Called(worktreePath, baseBranch)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CommitsAhead")
+	}
+
+	var r0 int
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, string) (int, error)); ok {
+		return rf(worktreePath, baseBranch)
+	}
+	if rf, ok := ret.Get(0).(func(string, string) int); ok {
+		r0 = rf(worktreePath, baseBranch)
+	} else {
+		r0 = ret.Get(0).(int)
+	}
+
+	if rf, ok := ret.Get(1).(func(string, string) error); ok {
+		r1 = rf(worktreePath, baseBranch)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockClient_CommitsAhead_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CommitsAhead'
+type MockClient_CommitsAhead_Call struct {
+	*mock.Call
+}
+
+// CommitsAhead is a helper method to define mock.On call
+//   - worktreePath string
+//   - baseBranch string
+func (_e *MockClient_Expecter) CommitsAhead(worktreePath interface{}, baseBranch interface{}) *MockClient_CommitsAhead_Call {
+	return &MockClient_CommitsAhead_Call{Call: _e.mock.On("CommitsAhead", worktreePath, baseBranch)}
+}
+
+func (_c *MockClient_CommitsAhead_Call) Run(run func(worktreePath string, baseBranch string)) *MockClient_CommitsAhead_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockClient_CommitsAhead_Call) Return(_a0 int, _a1 error) *MockClient_CommitsAhead_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockClient_CommitsAhead_Call) RunAndReturn(run func(string, string) (int, error)) *MockClient_CommitsAhead_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// CommitsBehind provides a mock function with given fields: worktreePath, baseBranch
+func (_m *MockClient) CommitsBehind(worktreePath string, baseBranch string) (int, error) {
+	ret := _m.Called(worktreePath, baseBranch)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CommitsBehind")
+	}
+
+	var r0 int
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, string) (int, error)); ok {
+		return rf(worktreePath, baseBranch)
+	}
+	if rf, ok := ret.Get(0).(func(string, string) int); ok {
+		r0 = rf(worktreePath, baseBranch)
+	} else {
+		r0 = ret.Get(0).(int)
+	}
+
+	if rf, ok := ret.Get(1).(func(string, string) error); ok {
+		r1 = rf(worktreePath, baseBranch)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockClient_CommitsBehind_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CommitsBehind'
+type MockClient_CommitsBehind_Call struct {
+	*mock.Call
+}
+
+// CommitsBehind is a helper method to define mock.On call
+//   - worktreePath string
+//   - baseBranch string
+func (_e *MockClient_Expecter) CommitsBehind(worktreePath interface{}, baseBranch interface{}) *MockClient_CommitsBehind_Call {
+	return &MockClient_CommitsBehind_Call{Call: _e.mock.On("CommitsBehind", worktreePath, baseBranch)}
+}
+
+func (_c *MockClient_CommitsBehind_Call) Run(run func(worktreePath string, baseBranch string)) *MockClient_CommitsBehind_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockClient_CommitsBehind_Call) Return(_a0 int, _a1 error) *MockClient_CommitsBehind_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockClient_CommitsBehind_Call) RunAndReturn(run func(string, string) (int, error)) *MockClient_CommitsBehind_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CurrentBranch provides a mock function with given fields: worktreePath
 func (_m *MockClient) CurrentBranch(worktreePath string) (string, error) {
 	ret := _m.Called(worktreePath)
@@ -232,6 +346,52 @@ func (_c *MockClient_CurrentBranch_Call) Return(_a0 string, _a1 error) *MockClie
 }
 
 func (_c *MockClient_CurrentBranch_Call) RunAndReturn(run func(string) (string, error)) *MockClient_CurrentBranch_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Fetch provides a mock function with given fields: repoPath
+func (_m *MockClient) Fetch(repoPath string) error {
+	ret := _m.Called(repoPath)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Fetch")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string) error); ok {
+		r0 = rf(repoPath)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockClient_Fetch_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Fetch'
+type MockClient_Fetch_Call struct {
+	*mock.Call
+}
+
+// Fetch is a helper method to define mock.On call
+//   - repoPath string
+func (_e *MockClient_Expecter) Fetch(repoPath interface{}) *MockClient_Fetch_Call {
+	return &MockClient_Fetch_Call{Call: _e.mock.On("Fetch", repoPath)}
+}
+
+func (_c *MockClient_Fetch_Call) Run(run func(repoPath string)) *MockClient_Fetch_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockClient_Fetch_Call) Return(_a0 error) *MockClient_Fetch_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClient_Fetch_Call) RunAndReturn(run func(string) error) *MockClient_Fetch_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/fatih/color"
@@ -80,14 +81,28 @@ func listRun() error {
 		if err != nil {
 			output.VerboseLog("Could not check status for %s: %v", wt.Branch, err)
 			gitStatus = "?"
-		} else if dirty {
-			gitStatus = "dirty"
 		} else {
-			hasCommits, err := gitClient.HasUnpushedCommits(wt.Path, baseBranch)
-			if err != nil {
-				output.VerboseLog("Could not check commits for %s: %v", wt.Branch, err)
-			} else if hasCommits {
-				gitStatus = "ahead"
+			ahead, aheadErr := gitClient.CommitsAhead(wt.Path, baseBranch)
+			if aheadErr != nil {
+				output.VerboseLog("Could not check ahead status for %s: %v", wt.Branch, aheadErr)
+			}
+			behind, behindErr := gitClient.CommitsBehind(wt.Path, baseBranch)
+			if behindErr != nil {
+				output.VerboseLog("Could not check behind status for %s: %v", wt.Branch, behindErr)
+			}
+
+			var parts []string
+			if dirty {
+				parts = append(parts, "dirty")
+			}
+			if ahead > 0 {
+				parts = append(parts, fmt.Sprintf("+%d", ahead))
+			}
+			if behind > 0 {
+				parts = append(parts, fmt.Sprintf("-%d", behind))
+			}
+			if len(parts) > 0 {
+				gitStatus = strings.Join(parts, " ")
 			}
 		}
 

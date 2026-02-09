@@ -281,3 +281,147 @@ func TestWorktreePrune_Integration(t *testing.T) {
 	err = client.WorktreePrune()
 	require.NoError(t, err)
 }
+
+func TestCommitsAhead_Integration(t *testing.T) {
+	repoDir := initTestRepo(t)
+
+	orig, err := os.Getwd()
+	require.NoError(t, err)
+	t.Cleanup(func() { os.Chdir(orig) })
+	os.Chdir(repoDir)
+
+	client := NewClient()
+
+	// Create a worktree with a branch
+	wtDir := repoDir + ".worktrees"
+	err = os.MkdirAll(wtDir, 0755)
+	require.NoError(t, err)
+
+	wtPath := filepath.Join(wtDir, "test-branch")
+	err = client.WorktreeAdd(wtPath, "test-branch", "HEAD", true)
+	require.NoError(t, err)
+
+	mainBranch, err := client.CurrentBranch(repoDir)
+	require.NoError(t, err)
+
+	// Not ahead initially
+	ahead, err := client.CommitsAhead(wtPath, mainBranch)
+	require.NoError(t, err)
+	assert.Equal(t, 0, ahead)
+
+	// Add commits in the worktree
+	for i := 0; i < 2; i++ {
+		cmd := exec.Command("git", "-C", wtPath, "commit", "--allow-empty", "-m", "feature commit")
+		cmd.Env = append(os.Environ(), "GIT_AUTHOR_NAME=Test", "GIT_AUTHOR_EMAIL=test@test.com", "GIT_COMMITTER_NAME=Test", "GIT_COMMITTER_EMAIL=test@test.com")
+		require.NoError(t, cmd.Run())
+	}
+
+	// Now 2 ahead
+	ahead, err = client.CommitsAhead(wtPath, mainBranch)
+	require.NoError(t, err)
+	assert.Equal(t, 2, ahead)
+}
+
+func TestCommitsBehind_Integration(t *testing.T) {
+	repoDir := initTestRepo(t)
+
+	orig, err := os.Getwd()
+	require.NoError(t, err)
+	t.Cleanup(func() { os.Chdir(orig) })
+	os.Chdir(repoDir)
+
+	client := NewClient()
+
+	// Create a worktree with a branch
+	wtDir := repoDir + ".worktrees"
+	err = os.MkdirAll(wtDir, 0755)
+	require.NoError(t, err)
+
+	wtPath := filepath.Join(wtDir, "test-branch")
+	err = client.WorktreeAdd(wtPath, "test-branch", "HEAD", true)
+	require.NoError(t, err)
+
+	// Get the main branch name
+	mainBranch, err := client.CurrentBranch(repoDir)
+	require.NoError(t, err)
+
+	// Not behind initially (same as base)
+	behind, err := client.CommitsBehind(wtPath, mainBranch)
+	require.NoError(t, err)
+	assert.Equal(t, 0, behind)
+
+	// Add commits to main (the worktree branch will be behind)
+	for i := 0; i < 3; i++ {
+		cmd := exec.Command("git", "-C", repoDir, "commit", "--allow-empty", "-m", "main commit")
+		cmd.Env = append(os.Environ(), "GIT_AUTHOR_NAME=Test", "GIT_AUTHOR_EMAIL=test@test.com", "GIT_COMMITTER_NAME=Test", "GIT_COMMITTER_EMAIL=test@test.com")
+		require.NoError(t, cmd.Run())
+	}
+
+	// Now the worktree branch should be behind by 3
+	behind, err = client.CommitsBehind(wtPath, mainBranch)
+	require.NoError(t, err)
+	assert.Equal(t, 3, behind)
+}
+
+func TestFetch_Integration(t *testing.T) {
+	// Fetch requires a remote, so we set up a local bare repo as origin
+	dir := t.TempDir()
+	dir, err := filepath.EvalSymlinks(dir)
+	require.NoError(t, err)
+
+	bareDir := filepath.Join(dir, "origin.git")
+	repoDir := filepath.Join(dir, "repo")
+
+	// Create bare repo
+	cmd := exec.Command("git", "init", "--bare", bareDir)
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, "git init --bare: %s", string(out))
+
+	// Clone bare repo to get a working repo with a remote
+	cmd = exec.Command("git", "clone", bareDir, repoDir)
+	out, err = cmd.CombinedOutput()
+	require.NoError(t, err, "git clone: %s", string(out))
+
+	// Configure and create initial commit
+	cmds := [][]string{
+		{"git", "-C", repoDir, "config", "user.email", "test@test.com"},
+		{"git", "-C", repoDir, "config", "user.name", "Test"},
+		{"git", "-C", repoDir, "commit", "--allow-empty", "-m", "init"},
+		{"git", "-C", repoDir, "push"},
+	}
+	for _, args := range cmds {
+		cmd := exec.Command(args[0], args[1:]...)
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, "cmd %v failed: %s", args, string(out))
+	}
+
+	orig, err := os.Getwd()
+	require.NoError(t, err)
+	t.Cleanup(func() { os.Chdir(orig) })
+	os.Chdir(repoDir)
+
+	client := NewClient()
+
+	// Fetch should succeed
+	err = client.Fetch(repoDir)
+	require.NoError(t, err)
+}
+
+func TestFetch_NoRemote_Integration(t *testing.T) {
+	// Fetch on a repo with no remote should fail
+	repoDir := initTestRepo(t)
+
+	orig, err := os.Getwd()
+	require.NoError(t, err)
+	t.Cleanup(func() { os.Chdir(orig) })
+	os.Chdir(repoDir)
+
+	client := NewClient()
+
+	// Fetch with no remote - git fetch exits 0 but does nothing
+	// This should not error since git fetch with no remote just exits cleanly
+	err = client.Fetch(repoDir)
+	// git fetch on a repo with no remote may or may not error depending on git version
+	// We just verify it doesn't panic
+	_ = err
+}

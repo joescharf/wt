@@ -2,7 +2,7 @@
 
 Git Worktree Manager with iTerm2 Integration.
 
-Creates git worktrees with dedicated iTerm2 windows — Claude Code on top, shell on bottom — and tracks them across repos. Full lifecycle management: `create` → work → `merge` → auto-cleanup.
+Creates git worktrees with dedicated iTerm2 windows — Claude Code on top, shell on bottom — and tracks them across repos. Full lifecycle management: `create` → work → `sync` → `merge` → auto-cleanup.
 
 ## Quick Start
 
@@ -18,6 +18,9 @@ wt list
 
 # Focus an existing worktree's window
 wt switch feature/auth
+
+# Sync worktree with latest main
+wt sync feature/auth
 
 # Merge branch into main + auto-cleanup
 wt merge feature/auth
@@ -120,10 +123,11 @@ Example output:
 ```
 Worktrees for myrepo
 
-  BRANCH          PATH                         WINDOW   STATUS   AGE
-  feature/auth    .../myrepo.worktrees/auth    open     ahead    2h
-  bugfix/login    .../myrepo.worktrees/login   stale    dirty    1d
-  feature/api     .../myrepo.worktrees/api     closed   clean    3d
+  BRANCH          PATH                         WINDOW   STATUS       AGE
+  feature/auth    .../myrepo.worktrees/auth    open     +2           2h
+  bugfix/login    .../myrepo.worktrees/login   stale    dirty -3     1d
+  feature/api     .../myrepo.worktrees/api     closed   clean        3d
+  feature/sync    .../myrepo.worktrees/sync    open     +1 -5        4h
 ```
 
 Output columns:
@@ -131,10 +135,13 @@ Output columns:
 - **BRANCH** — git branch name
 - **PATH** — worktree directory path
 - **WINDOW** — `open` (green), `stale` (yellow, window closed but state exists), or `closed` (red)
-- **STATUS** — git working state:
+- **STATUS** — git working state, combining dirty and ahead/behind indicators:
+  - `clean` (green) — no uncommitted changes, in sync with base branch
   - `dirty` (red) — has uncommitted changes
-  - `ahead` (yellow) — has commits not yet merged into the base branch
-  - `clean` (green) — up to date with the base branch
+  - `+N` (yellow) — N commits ahead of base branch
+  - `-N` (yellow) — N commits behind base branch (needs `wt sync`)
+  - `+N -M` (yellow) — N ahead and M behind (diverged)
+  - `dirty +N` / `dirty -M` / `dirty +N -M` (red) — uncommitted changes with ahead/behind
 - **AGE** — time since creation
 
 Automatically prunes stale state entries for worktrees that no longer exist on disk.
@@ -191,6 +198,36 @@ wt mg feature/auth                           # alias
 | `--body`       | —       | PR body (`--pr` only, uses `--fill` if empty)|
 | `--draft`      | `false` | Draft PR (`--pr` only)                       |
 | `--force`      | `false` | Skip safety checks                          |
+
+### `sync [branch]`
+
+Syncs a worktree with the base branch by merging base into the feature branch. Reports ahead/behind status before merging so you know exactly what will happen. **Idempotent** — if a merge has conflicts, resolve them and run `wt sync` again to continue.
+
+```bash
+wt sync feature/auth                   # Sync with main (fetches if remote exists)
+wt sync feature/auth --base develop    # Sync with develop instead
+wt sync feature/auth --force           # Skip dirty worktree check
+wt sync --all                          # Sync all worktrees at once
+wt sync -n feature/auth                # Dry-run
+wt sy feature/auth                     # alias
+```
+
+**What happens:**
+
+1. Safety checks (dirty worktree → error, use `--force` to skip)
+2. If a merge is already in progress, picks up where it left off
+3. Fetches latest changes (if remote exists)
+4. Reports status (`+2 -3` means 2 ahead, 3 behind)
+5. If already in sync (0 behind), exits early
+6. Merges base branch into feature branch
+
+**Sync all** (`--all`) fetches once, then syncs each worktree. Skips dirty worktrees and those with in-progress merges, reports per-worktree status.
+
+| Flag      | Default | Description                                |
+| --------- | ------- | ------------------------------------------ |
+| `--all`   | `false` | Sync all worktrees                         |
+| `--base`  | config  | Base branch (default from `base_branch`)   |
+| `--force` | `false` | Skip dirty worktree safety check           |
 
 ### `delete [branch]`
 
@@ -356,5 +393,7 @@ Sessions are named `wt:<repo>:<dirname>:<pane>` for visual identification. The t
 **Merge conflict** — If `merge` encounters a conflict, it stops without cleaning up the worktree. Resolve the conflicts in the main repo, stage the files (`git add`), then run `wt merge <branch>` again — it detects the in-progress merge and continues automatically.
 
 **`gh` CLI not found** — The `--pr` flag requires the GitHub CLI. Install it from [cli.github.com](https://cli.github.com). You must also be authenticated (`gh auth login`).
+
+**Sync conflict** — If `sync` encounters a merge conflict, it stops. Resolve the conflicts in the worktree, stage the files (`git add`), then run `wt sync <branch>` again — it detects the in-progress merge and continues automatically.
 
 **Main repo not on base branch** — `merge` (local mode) requires the main repo to be on the target base branch. If you see this error, `cd` to the main repo and `git checkout main` (or your configured base branch) first.

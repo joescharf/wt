@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/fatih/color"
 )
@@ -70,15 +71,16 @@ func StatusColor(status string) string {
 	}
 }
 
-// GitStatusColor returns the string colored by git status: red for "dirty", yellow for "ahead", green for "clean".
+// GitStatusColor returns the string colored by git status.
+// "dirty" (with or without +N/-N) is red, "+N"/"-N" without dirty is yellow, "clean" is green.
 func GitStatusColor(status string) string {
-	switch status {
-	case "dirty":
+	switch {
+	case strings.HasPrefix(status, "dirty"):
 		return red(status)
-	case "ahead":
-		return yellow(status)
-	case "clean":
+	case status == "clean":
 		return green(status)
+	case strings.HasPrefix(status, "+") || strings.HasPrefix(status, "-"):
+		return yellow(status)
 	default:
 		return status
 	}

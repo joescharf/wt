@@ -39,6 +39,9 @@ type Client interface {
 	Pull(repoPath string) error
 	Push(worktreePath, branch string, setUpstream bool) error
 	HasRemote() (bool, error)
+	Fetch(repoPath string) error
+	CommitsAhead(worktreePath, baseBranch string) (int, error)
+	CommitsBehind(worktreePath, baseBranch string) (int, error)
 }
 
 // RealClient implements Client using real git commands.
@@ -394,6 +397,40 @@ func (c *RealClient) HasRemote() (bool, error) {
 		return false, fmt.Errorf("failed to check remotes: %w", err)
 	}
 	return strings.TrimSpace(string(out)) != "", nil
+}
+
+func (c *RealClient) Fetch(repoPath string) error {
+	out, err := exec.Command("git", "-C", repoPath, "fetch").CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("git fetch failed: %s: %w", strings.TrimSpace(string(out)), err)
+	}
+	return nil
+}
+
+func (c *RealClient) CommitsAhead(worktreePath, baseBranch string) (int, error) {
+	out, err := exec.Command("git", "-C", worktreePath, "rev-list", "--count", baseBranch+"..HEAD").Output()
+	if err != nil {
+		return 0, fmt.Errorf("failed to count commits ahead: %w", err)
+	}
+	var count int
+	_, err = fmt.Sscanf(strings.TrimSpace(string(out)), "%d", &count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse commit count: %w", err)
+	}
+	return count, nil
+}
+
+func (c *RealClient) CommitsBehind(worktreePath, baseBranch string) (int, error) {
+	out, err := exec.Command("git", "-C", worktreePath, "rev-list", "--count", "HEAD.."+baseBranch).Output()
+	if err != nil {
+		return 0, fmt.Errorf("failed to count commits behind: %w", err)
+	}
+	var count int
+	_, err = fmt.Sscanf(strings.TrimSpace(string(out)), "%d", &count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse commit count: %w", err)
+	}
+	return count, nil
 }
 
 func isDir(path string) bool {
