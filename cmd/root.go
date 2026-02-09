@@ -72,14 +72,7 @@ func initConfig() {
 		os.Exit(1)
 	}
 
-	// One-time migration: rename old config dir to new
-	oldConfigDir := filepath.Join(home, ".config", "worktree-dev")
 	configDir := filepath.Join(home, ".config", "wt")
-	if info, err := os.Stat(oldConfigDir); err == nil && info.IsDir() {
-		if _, err := os.Stat(configDir); os.IsNotExist(err) {
-			os.Rename(oldConfigDir, configDir)
-		}
-	}
 	viper.AddConfigPath(configDir)
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
