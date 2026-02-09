@@ -9,6 +9,7 @@ import (
 	"github.com/olekukonko/tablewriter/renderer"
 	"github.com/olekukonko/tablewriter/tw"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/joescharf/wt/internal/ui"
 )
@@ -53,6 +54,8 @@ func listRun() error {
 		return err
 	}
 
+	baseBranch := viper.GetString("base_branch")
+
 	var rows [][]string
 	for _, wt := range worktrees {
 		// Skip the main repo worktree
@@ -71,6 +74,23 @@ func listRun() error {
 			}
 		}
 
+		// Check git status
+		gitStatus := "clean"
+		dirty, err := gitClient.IsWorktreeDirty(wt.Path)
+		if err != nil {
+			output.VerboseLog("Could not check status for %s: %v", wt.Branch, err)
+			gitStatus = "?"
+		} else if dirty {
+			gitStatus = "dirty"
+		} else {
+			hasCommits, err := gitClient.HasUnpushedCommits(wt.Path, baseBranch)
+			if err != nil {
+				output.VerboseLog("Could not check commits for %s: %v", wt.Branch, err)
+			} else if hasCommits {
+				gitStatus = "ahead"
+			}
+		}
+
 		// Calculate age
 		age := "-"
 		if ws != nil && !ws.CreatedAt.Time.IsZero() {
@@ -86,6 +106,7 @@ func listRun() error {
 			wt.Branch,
 			displayPath,
 			ui.StatusColor(windowStatus),
+			ui.GitStatusColor(gitStatus),
 			age,
 		})
 	}
@@ -110,7 +131,7 @@ func listRun() error {
 			tablewriter.WithHeaderAutoFormat(tw.Off),
 		)
 
-		table.Header("BRANCH", "PATH", "WINDOW", "AGE")
+		table.Header("BRANCH", "PATH", "WINDOW", "STATUS", "AGE")
 		table.Bulk(rows)
 		table.Render()
 	}

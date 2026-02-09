@@ -32,6 +32,13 @@ type Client interface {
 	IsWorktreeDirty(path string) (bool, error)
 	HasUnpushedCommits(path, baseBranch string) (bool, error)
 	WorktreePrune() error
+	Merge(repoPath, branch string) error
+	MergeContinue(repoPath string) error
+	IsMergeInProgress(repoPath string) (bool, error)
+	HasConflicts(repoPath string) (bool, error)
+	Pull(repoPath string) error
+	Push(worktreePath, branch string, setUpstream bool) error
+	HasRemote() (bool, error)
 }
 
 // RealClient implements Client using real git commands.
@@ -303,6 +310,90 @@ func ResolveWorktreePath(input, worktreesDir string) (string, error) {
 func BranchToDirname(branch string) string {
 	parts := strings.Split(branch, "/")
 	return parts[len(parts)-1]
+}
+
+func (c *RealClient) Merge(repoPath, branch string) error {
+	out, err := exec.Command("git", "-C", repoPath, "merge", branch, "--no-edit").CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("git merge failed: %s: %w", strings.TrimSpace(string(out)), err)
+	}
+	return nil
+}
+
+func (c *RealClient) MergeContinue(repoPath string) error {
+	cmd := exec.Command("git", "-C", repoPath, "merge", "--continue")
+	cmd.Env = append(os.Environ(), "GIT_EDITOR=true") // skip editor prompt
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("git merge --continue failed: %s: %w", strings.TrimSpace(string(out)), err)
+	}
+	return nil
+}
+
+func (c *RealClient) IsMergeInProgress(repoPath string) (bool, error) {
+	// git has a MERGE_HEAD file when a merge is in progress
+	gitDir := filepath.Join(repoPath, ".git")
+	info, err := os.Stat(gitDir)
+	if err != nil {
+		return false, fmt.Errorf("cannot find .git directory: %w", err)
+	}
+	// If .git is a file (worktree), read the actual git dir
+	if !info.IsDir() {
+		data, err := os.ReadFile(gitDir)
+		if err != nil {
+			return false, err
+		}
+		// Format: "gitdir: /path/to/actual/.git/worktrees/name"
+		gitDir = strings.TrimSpace(strings.TrimPrefix(string(data), "gitdir: "))
+	}
+	_, err = os.Stat(filepath.Join(gitDir, "MERGE_HEAD"))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+func (c *RealClient) HasConflicts(repoPath string) (bool, error) {
+	out, err := exec.Command("git", "-C", repoPath, "diff", "--name-only", "--diff-filter=U").Output()
+	if err != nil {
+		return false, fmt.Errorf("failed to check for conflicts: %w", err)
+	}
+	return strings.TrimSpace(string(out)) != "", nil
+}
+
+func (c *RealClient) Pull(repoPath string) error {
+	out, err := exec.Command("git", "-C", repoPath, "pull").CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("git pull failed: %s: %w", strings.TrimSpace(string(out)), err)
+	}
+	return nil
+}
+
+func (c *RealClient) Push(worktreePath, branch string, setUpstream bool) error {
+	args := []string{"-C", worktreePath, "push"}
+	if setUpstream {
+		args = append(args, "-u", "origin", branch)
+	}
+	out, err := exec.Command("git", args...).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("git push failed: %s: %w", strings.TrimSpace(string(out)), err)
+	}
+	return nil
+}
+
+func (c *RealClient) HasRemote() (bool, error) {
+	root, err := c.RepoRoot()
+	if err != nil {
+		return false, err
+	}
+	out, err := exec.Command("git", "-C", root, "remote").Output()
+	if err != nil {
+		return false, fmt.Errorf("failed to check remotes: %w", err)
+	}
+	return strings.TrimSpace(string(out)) != "", nil
 }
 
 func isDir(path string) bool {

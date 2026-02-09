@@ -236,6 +236,117 @@ func (_c *MockClient_CurrentBranch_Call) RunAndReturn(run func(string) (string, 
 	return _c
 }
 
+// HasConflicts provides a mock function with given fields: repoPath
+func (_m *MockClient) HasConflicts(repoPath string) (bool, error) {
+	ret := _m.Called(repoPath)
+
+	if len(ret) == 0 {
+		panic("no return value specified for HasConflicts")
+	}
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) (bool, error)); ok {
+		return rf(repoPath)
+	}
+	if rf, ok := ret.Get(0).(func(string) bool); ok {
+		r0 = rf(repoPath)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(repoPath)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockClient_HasConflicts_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HasConflicts'
+type MockClient_HasConflicts_Call struct {
+	*mock.Call
+}
+
+// HasConflicts is a helper method to define mock.On call
+//   - repoPath string
+func (_e *MockClient_Expecter) HasConflicts(repoPath interface{}) *MockClient_HasConflicts_Call {
+	return &MockClient_HasConflicts_Call{Call: _e.mock.On("HasConflicts", repoPath)}
+}
+
+func (_c *MockClient_HasConflicts_Call) Run(run func(repoPath string)) *MockClient_HasConflicts_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockClient_HasConflicts_Call) Return(_a0 bool, _a1 error) *MockClient_HasConflicts_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockClient_HasConflicts_Call) RunAndReturn(run func(string) (bool, error)) *MockClient_HasConflicts_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// HasRemote provides a mock function with no fields
+func (_m *MockClient) HasRemote() (bool, error) {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for HasRemote")
+	}
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func() (bool, error)); ok {
+		return rf()
+	}
+	if rf, ok := ret.Get(0).(func() bool); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockClient_HasRemote_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HasRemote'
+type MockClient_HasRemote_Call struct {
+	*mock.Call
+}
+
+// HasRemote is a helper method to define mock.On call
+func (_e *MockClient_Expecter) HasRemote() *MockClient_HasRemote_Call {
+	return &MockClient_HasRemote_Call{Call: _e.mock.On("HasRemote")}
+}
+
+func (_c *MockClient_HasRemote_Call) Run(run func()) *MockClient_HasRemote_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockClient_HasRemote_Call) Return(_a0 bool, _a1 error) *MockClient_HasRemote_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockClient_HasRemote_Call) RunAndReturn(run func() (bool, error)) *MockClient_HasRemote_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // HasUnpushedCommits provides a mock function with given fields: path, baseBranch
 func (_m *MockClient) HasUnpushedCommits(path string, baseBranch string) (bool, error) {
 	ret := _m.Called(path, baseBranch)
@@ -293,6 +404,62 @@ func (_c *MockClient_HasUnpushedCommits_Call) RunAndReturn(run func(string, stri
 	return _c
 }
 
+// IsMergeInProgress provides a mock function with given fields: repoPath
+func (_m *MockClient) IsMergeInProgress(repoPath string) (bool, error) {
+	ret := _m.Called(repoPath)
+
+	if len(ret) == 0 {
+		panic("no return value specified for IsMergeInProgress")
+	}
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) (bool, error)); ok {
+		return rf(repoPath)
+	}
+	if rf, ok := ret.Get(0).(func(string) bool); ok {
+		r0 = rf(repoPath)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(repoPath)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockClient_IsMergeInProgress_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsMergeInProgress'
+type MockClient_IsMergeInProgress_Call struct {
+	*mock.Call
+}
+
+// IsMergeInProgress is a helper method to define mock.On call
+//   - repoPath string
+func (_e *MockClient_Expecter) IsMergeInProgress(repoPath interface{}) *MockClient_IsMergeInProgress_Call {
+	return &MockClient_IsMergeInProgress_Call{Call: _e.mock.On("IsMergeInProgress", repoPath)}
+}
+
+func (_c *MockClient_IsMergeInProgress_Call) Run(run func(repoPath string)) *MockClient_IsMergeInProgress_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockClient_IsMergeInProgress_Call) Return(_a0 bool, _a1 error) *MockClient_IsMergeInProgress_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockClient_IsMergeInProgress_Call) RunAndReturn(run func(string) (bool, error)) *MockClient_IsMergeInProgress_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // IsWorktreeDirty provides a mock function with given fields: path
 func (_m *MockClient) IsWorktreeDirty(path string) (bool, error) {
 	ret := _m.Called(path)
@@ -345,6 +512,193 @@ func (_c *MockClient_IsWorktreeDirty_Call) Return(_a0 bool, _a1 error) *MockClie
 }
 
 func (_c *MockClient_IsWorktreeDirty_Call) RunAndReturn(run func(string) (bool, error)) *MockClient_IsWorktreeDirty_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Merge provides a mock function with given fields: repoPath, branch
+func (_m *MockClient) Merge(repoPath string, branch string) error {
+	ret := _m.Called(repoPath, branch)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Merge")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, string) error); ok {
+		r0 = rf(repoPath, branch)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockClient_Merge_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Merge'
+type MockClient_Merge_Call struct {
+	*mock.Call
+}
+
+// Merge is a helper method to define mock.On call
+//   - repoPath string
+//   - branch string
+func (_e *MockClient_Expecter) Merge(repoPath interface{}, branch interface{}) *MockClient_Merge_Call {
+	return &MockClient_Merge_Call{Call: _e.mock.On("Merge", repoPath, branch)}
+}
+
+func (_c *MockClient_Merge_Call) Run(run func(repoPath string, branch string)) *MockClient_Merge_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockClient_Merge_Call) Return(_a0 error) *MockClient_Merge_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClient_Merge_Call) RunAndReturn(run func(string, string) error) *MockClient_Merge_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// MergeContinue provides a mock function with given fields: repoPath
+func (_m *MockClient) MergeContinue(repoPath string) error {
+	ret := _m.Called(repoPath)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MergeContinue")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string) error); ok {
+		r0 = rf(repoPath)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockClient_MergeContinue_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MergeContinue'
+type MockClient_MergeContinue_Call struct {
+	*mock.Call
+}
+
+// MergeContinue is a helper method to define mock.On call
+//   - repoPath string
+func (_e *MockClient_Expecter) MergeContinue(repoPath interface{}) *MockClient_MergeContinue_Call {
+	return &MockClient_MergeContinue_Call{Call: _e.mock.On("MergeContinue", repoPath)}
+}
+
+func (_c *MockClient_MergeContinue_Call) Run(run func(repoPath string)) *MockClient_MergeContinue_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockClient_MergeContinue_Call) Return(_a0 error) *MockClient_MergeContinue_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClient_MergeContinue_Call) RunAndReturn(run func(string) error) *MockClient_MergeContinue_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Pull provides a mock function with given fields: repoPath
+func (_m *MockClient) Pull(repoPath string) error {
+	ret := _m.Called(repoPath)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Pull")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string) error); ok {
+		r0 = rf(repoPath)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockClient_Pull_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Pull'
+type MockClient_Pull_Call struct {
+	*mock.Call
+}
+
+// Pull is a helper method to define mock.On call
+//   - repoPath string
+func (_e *MockClient_Expecter) Pull(repoPath interface{}) *MockClient_Pull_Call {
+	return &MockClient_Pull_Call{Call: _e.mock.On("Pull", repoPath)}
+}
+
+func (_c *MockClient_Pull_Call) Run(run func(repoPath string)) *MockClient_Pull_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockClient_Pull_Call) Return(_a0 error) *MockClient_Pull_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClient_Pull_Call) RunAndReturn(run func(string) error) *MockClient_Pull_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Push provides a mock function with given fields: worktreePath, branch, setUpstream
+func (_m *MockClient) Push(worktreePath string, branch string, setUpstream bool) error {
+	ret := _m.Called(worktreePath, branch, setUpstream)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Push")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, string, bool) error); ok {
+		r0 = rf(worktreePath, branch, setUpstream)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockClient_Push_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Push'
+type MockClient_Push_Call struct {
+	*mock.Call
+}
+
+// Push is a helper method to define mock.On call
+//   - worktreePath string
+//   - branch string
+//   - setUpstream bool
+func (_e *MockClient_Expecter) Push(worktreePath interface{}, branch interface{}, setUpstream interface{}) *MockClient_Push_Call {
+	return &MockClient_Push_Call{Call: _e.mock.On("Push", worktreePath, branch, setUpstream)}
+}
+
+func (_c *MockClient_Push_Call) Run(run func(worktreePath string, branch string, setUpstream bool)) *MockClient_Push_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string), args[2].(bool))
+	})
+	return _c
+}
+
+func (_c *MockClient_Push_Call) Return(_a0 error) *MockClient_Push_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClient_Push_Call) RunAndReturn(run func(string, string, bool) error) *MockClient_Push_Call {
 	_c.Call.Return(run)
 	return _c
 }

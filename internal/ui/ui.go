@@ -70,6 +70,20 @@ func StatusColor(status string) string {
 	}
 }
 
+// GitStatusColor returns the string colored by git status: red for "dirty", yellow for "ahead", green for "clean".
+func GitStatusColor(status string) string {
+	switch status {
+	case "dirty":
+		return red(status)
+	case "ahead":
+		return yellow(status)
+	case "clean":
+		return green(status)
+	default:
+		return status
+	}
+}
+
 func (u *UI) Info(format string, a ...any) {
 	fmt.Fprintf(u.Out, "%s %s\n", infoPrefix, fmt.Sprintf(format, a...))
 }

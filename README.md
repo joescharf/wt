@@ -2,7 +2,7 @@
 
 Git Worktree Manager with iTerm2 Integration.
 
-Creates git worktrees with dedicated iTerm2 windows — Claude Code on top, shell on bottom — and tracks them across repos. Creating a worktree spawns the window; deleting it closes the window too.
+Creates git worktrees with dedicated iTerm2 windows — Claude Code on top, shell on bottom — and tracks them across repos. Full lifecycle management: `create` → work → `merge` → auto-cleanup.
 
 ## Quick Start
 
@@ -18,6 +18,12 @@ wt list
 
 # Focus an existing worktree's window
 wt switch feature/auth
+
+# Merge branch into main + auto-cleanup
+wt merge feature/auth
+
+# Or create a PR instead
+wt merge feature/auth --pr
 
 # Tear down everything
 wt delete feature/auth --delete-branch
@@ -102,11 +108,22 @@ wt create feature/auth                          # Safe to re-run — opens exist
 
 ### `list`
 
-Shows all worktrees for the current repo with their iTerm2 window status.
+Shows all worktrees for the current repo with their iTerm2 window status and git status.
 
 ```bash
 wt list
 wt ls        # alias
+```
+
+Example output:
+
+```
+Worktrees for myrepo
+
+  BRANCH          PATH                         WINDOW   STATUS   AGE
+  feature/auth    .../myrepo.worktrees/auth    open     ahead    2h
+  bugfix/login    .../myrepo.worktrees/login   stale    dirty    1d
+  feature/api     .../myrepo.worktrees/api     closed   clean    3d
 ```
 
 Output columns:
@@ -114,6 +131,10 @@ Output columns:
 - **BRANCH** — git branch name
 - **PATH** — worktree directory path
 - **WINDOW** — `open` (green), `stale` (yellow, window closed but state exists), or `closed` (red)
+- **STATUS** — git working state:
+  - `dirty` (red) — has uncommitted changes
+  - `ahead` (yellow) — has commits not yet merged into the base branch
+  - `clean` (green) — up to date with the base branch
 - **AGE** — time since creation
 
 Automatically prunes stale state entries for worktrees that no longer exist on disk.
@@ -129,6 +150,47 @@ wt switch auth           # dirname also works
 ```
 
 If the window was closed, suggests using `open` instead.
+
+### `merge [branch]`
+
+Merges a worktree's branch into the base branch (local merge by default) or creates a pull request (`--pr`). After a successful local merge, the worktree is automatically cleaned up. **Idempotent** — if a merge has conflicts, resolve them and run `wt merge` again to continue.
+
+```bash
+wt merge feature/auth                        # Local merge into main + cleanup
+wt merge feature/auth --pr                   # Push + create PR via gh CLI
+wt merge feature/auth --pr --draft           # Create draft PR
+wt merge feature/auth --pr --title "Add auth" # PR with custom title
+wt merge feature/auth --no-cleanup           # Merge but keep worktree
+wt merge feature/auth --base develop         # Merge into develop
+wt merge feature/auth -n                     # Dry-run
+wt mg feature/auth                           # alias
+```
+
+**Local merge flow:**
+
+1. Safety checks (dirty worktree → error, use `--force` to skip)
+2. Verifies main repo is on the base branch
+3. Pulls base branch (if remote exists)
+4. Merges feature branch into base branch
+5. Pushes base branch (if remote exists)
+6. Cleans up worktree (unless `--no-cleanup`)
+
+**PR flow:**
+
+1. Same safety checks
+2. Pushes branch to remote
+3. Creates PR via `gh pr create`
+4. Worktree is kept for PR review
+
+| Flag           | Default | Description                                  |
+| -------------- | ------- | -------------------------------------------- |
+| `--pr`         | `false` | Create PR instead of local merge             |
+| `--no-cleanup` | `false` | Keep worktree after merge                    |
+| `--base`       | config  | Target branch (default from `base_branch`)   |
+| `--title`      | —       | PR title (`--pr` only)                       |
+| `--body`       | —       | PR body (`--pr` only, uses `--fill` if empty)|
+| `--draft`      | `false` | Draft PR (`--pr` only)                       |
+| `--force`      | `false` | Skip safety checks                          |
 
 ### `delete [branch]`
 
@@ -274,11 +336,12 @@ Sessions are named `wt:<repo>:<dirname>:<pane>` for visual identification. The t
 
 ## Dependencies
 
-| Dependency  | Purpose                                          |
-| ----------- | ------------------------------------------------ |
-| `git`       | Worktree operations                              |
-| `osascript` | iTerm2 AppleScript automation (built into macOS) |
-| iTerm2      | Terminal emulator                                |
+| Dependency  | Purpose                                          | Required |
+| ----------- | ------------------------------------------------ | -------- |
+| `git`       | Worktree operations                              | Yes      |
+| `osascript` | iTerm2 AppleScript automation (built into macOS) | Yes      |
+| iTerm2      | Terminal emulator                                | Yes      |
+| `gh`        | GitHub CLI for `merge --pr` ([cli.github.com](https://cli.github.com)) | Optional |
 
 ## Troubleshooting
 
@@ -289,3 +352,9 @@ Sessions are named `wt:<repo>:<dirname>:<pane>` for visual identification. The t
 **Branch name resolution** — You can use the full branch name (`feature/auth`) or just the dirname (`auth`). The tool tries both when resolving.
 
 **Safety checks on delete** — If a worktree has uncommitted changes or unpushed commits, `delete` will prompt for confirmation. Use `--force` to skip all checks.
+
+**Merge conflict** — If `merge` encounters a conflict, it stops without cleaning up the worktree. Resolve the conflicts in the main repo, stage the files (`git add`), then run `wt merge <branch>` again — it detects the in-progress merge and continues automatically.
+
+**`gh` CLI not found** — The `--pr` flag requires the GitHub CLI. Install it from [cli.github.com](https://cli.github.com). You must also be authenticated (`gh auth login`).
+
+**Main repo not on base branch** — `merge` (local mode) requires the main repo to be on the target base branch. If you see this error, `cd` to the main repo and `git checkout main` (or your configured base branch) first.

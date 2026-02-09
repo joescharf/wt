@@ -89,28 +89,10 @@ func checkWorktreeSafety(wtPath, dirname string) bool {
 	return true
 }
 
-func deleteRun(branch string) error {
-	wtPath, err := gitClient.ResolveWorktree(branch)
-	if err != nil {
-		return err
-	}
+// cleanupWorktree performs full worktree cleanup: close window, remove worktree, delete branch, clean state/trust.
+// Used by both delete and merge commands.
+func cleanupWorktree(wtPath, branchName string, force, deleteBranch bool) error {
 	dirname := filepath.Base(wtPath)
-
-	if !isDirectory(wtPath) {
-		output.Error("Worktree not found: %s", wtPath)
-		// Clean up stale state
-		_ = stateMgr.RemoveWorktree(wtPath)
-		return fmt.Errorf("worktree not found: %s", wtPath)
-	}
-
-	output.Info("Deleting worktree '%s'", ui.Cyan(dirname))
-
-	// Safety checks (skip with --force)
-	if !deleteForce {
-		if !checkWorktreeSafety(wtPath, dirname) {
-			return fmt.Errorf("delete aborted")
-		}
-	}
 
 	// Close iTerm2 window if it exists
 	ws, _ := stateMgr.GetWorktree(wtPath)
@@ -122,7 +104,7 @@ func deleteRun(branch string) error {
 				output.Warning("Failed to close iTerm2 window: %v", err)
 			} else {
 				output.Success("Closed iTerm2 window")
-				time.Sleep(500 * time.Millisecond) // small delay for iTerm2 to process
+				time.Sleep(500 * time.Millisecond)
 			}
 		}
 	}
@@ -132,15 +114,14 @@ func deleteRun(branch string) error {
 		output.DryRunMsg("Would remove git worktree: %s", wtPath)
 	} else {
 		output.Info("Removing git worktree")
-		if err := gitClient.WorktreeRemove(wtPath, deleteForce); err != nil {
+		if err := gitClient.WorktreeRemove(wtPath, force); err != nil {
 			return err
 		}
 		output.Success("Removed git worktree")
 	}
 
 	// Delete branch if requested
-	if deleteBranchFlag {
-		branchName := branch
+	if deleteBranch {
 		if ws != nil && ws.Branch != "" {
 			branchName = ws.Branch
 		}
@@ -150,7 +131,7 @@ func deleteRun(branch string) error {
 		} else {
 			err := gitClient.BranchDelete(branchName, false)
 			if err != nil {
-				if deleteForce {
+				if force {
 					err = gitClient.BranchDelete(branchName, true)
 					if err == nil {
 						output.Success("Force-deleted branch '%s'", branchName)
@@ -178,8 +159,38 @@ func deleteRun(branch string) error {
 		}
 	}
 
-	fmt.Fprintln(output.Out)
 	output.Success("Worktree '%s' removed", ui.Cyan(dirname))
+	return nil
+}
+
+func deleteRun(branch string) error {
+	wtPath, err := gitClient.ResolveWorktree(branch)
+	if err != nil {
+		return err
+	}
+	dirname := filepath.Base(wtPath)
+
+	if !isDirectory(wtPath) {
+		output.Error("Worktree not found: %s", wtPath)
+		// Clean up stale state
+		_ = stateMgr.RemoveWorktree(wtPath)
+		return fmt.Errorf("worktree not found: %s", wtPath)
+	}
+
+	output.Info("Deleting worktree '%s'", ui.Cyan(dirname))
+
+	// Safety checks (skip with --force)
+	if !deleteForce {
+		if !checkWorktreeSafety(wtPath, dirname) {
+			return fmt.Errorf("delete aborted")
+		}
+	}
+
+	if err := cleanupWorktree(wtPath, branch, deleteForce, deleteBranchFlag); err != nil {
+		return err
+	}
+
+	fmt.Fprintln(output.Out)
 	return nil
 }
 
