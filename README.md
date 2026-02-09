@@ -1,4 +1,4 @@
-# worktree-dev.zsh
+# worktree-dev
 
 Git Worktree Manager with iTerm2 Integration.
 
@@ -21,19 +21,48 @@ wt switch feature/auth
 
 # Tear down everything
 wt delete feature/auth --delete-branch
+
+# Clean up stale state
+wt prune
 ```
 
 ## Installation
 
 ```bash
-# From the source directory:
-./worktree-dev.zsh install
+# Via Homebrew tap
+brew install joescharf/tap/worktree-dev
 
-# Or reinstall after making changes:
-./worktree-dev.zsh install
+# Or build from source
+go install github.com/joescharf/worktree-dev@latest
 ```
 
-This copies the script to `~/.local/bin/worktree-dev.zsh`, makes it executable, and idempotently adds an `alias wt="worktree-dev.zsh"` to `~/.zshrc`. Run `source ~/.zshrc` or open a new shell to pick up the alias.
+## Shell Completions
+
+Enable tab completion for worktree names, branch names, and flags:
+
+```bash
+# Zsh (add to ~/.zshrc)
+source <(wt completion zsh)
+
+# Bash (add to ~/.bashrc)
+source <(wt completion bash)
+
+# Fish
+wt completion fish | source
+```
+
+For persistent completions:
+
+```bash
+# Zsh
+wt completion zsh > "${fpath[1]}/_wt"
+
+# Bash (macOS)
+wt completion bash > $(brew --prefix)/etc/bash_completion.d/wt
+
+# Fish
+wt completion fish > ~/.config/fish/completions/wt.fish
+```
 
 ## Commands
 
@@ -81,11 +110,11 @@ wt ls        # alias
 
 Output columns:
 - **BRANCH** — git branch name
-- **PATH** — worktree directory name
+- **PATH** — worktree directory path
 - **WINDOW** — `open` (green), `stale` (yellow, window closed but state exists), or `closed` (red)
 - **AGE** — time since creation
 
-Automatically prunes stale state entries for worktrees that no longer exist in git.
+Automatically prunes stale state entries for worktrees that no longer exist on disk.
 
 ### `switch <branch>`
 
@@ -99,16 +128,26 @@ wt switch auth           # dirname also works
 
 If the window was closed, suggests using `open` instead.
 
-### `delete <branch>`
+### `delete [branch]`
 
 Closes the iTerm2 window, removes the git worktree, and cleans up state.
 
+**Safety checks:** Before deleting, `wt` checks for uncommitted changes and unpushed commits. If the worktree is clean and up to date, it deletes immediately. If there's risk of data loss, it prompts for confirmation.
+
 ```bash
-wt delete feature/auth                   # Remove worktree only
+wt delete feature/auth                   # Remove worktree (with safety checks)
 wt delete feature/auth --delete-branch   # Also delete the git branch
-wt delete feature/auth --force           # Force removal with uncommitted changes
-wt rm feature/auth --delete-branch       # alias
+wt delete feature/auth --force           # Skip safety checks
+wt delete --all                          # Delete all worktrees (checks each one)
+wt delete --all --force                  # Delete all worktrees without prompting
+wt rm feature/auth                       # alias
 ```
+
+| Flag | Description |
+|------|-------------|
+| `--force` | Skip safety checks (dirty/unpushed), force removal |
+| `--delete-branch` | Also delete the git branch after removing the worktree |
+| `--all` | Delete all worktrees (excludes main repo) |
 
 ### `open <branch>`
 
@@ -121,16 +160,34 @@ wt open auth             # dirname also works
 
 If the window is already open, focuses it instead.
 
-### `install`
+### `prune`
 
-Copies the script to `~/.local/bin/` and adds the `wt` alias to `~/.zshrc`.
+Cleans up stale state and git worktree tracking.
 
 ```bash
-./worktree-dev.zsh install        # From source directory
-./worktree-dev.zsh -n install     # Dry-run to see what would happen
+wt prune          # Clean stale state + run git worktree prune
+wt prune -n       # Dry-run: show what would be cleaned
 ```
 
-Safe to run repeatedly — skips the alias if it already exists, and overwrites the installed copy with the current source.
+This removes state entries for worktree paths that no longer exist on disk and runs `git worktree prune` to clean git's internal tracking.
+
+### `completion <shell>`
+
+Generates shell completion scripts. See [Shell Completions](#shell-completions) above.
+
+```bash
+wt completion bash
+wt completion zsh
+wt completion fish
+```
+
+### `version`
+
+Prints version, commit hash, and build date.
+
+```bash
+wt version
+```
 
 ## Global Flags
 
@@ -139,6 +196,24 @@ Safe to run repeatedly — skips the alias if it already exists, and overwrites 
 | `-v, --verbose` | Show detailed output (commands, paths, session IDs) |
 | `-n, --dry-run` | Show what would happen without making changes |
 | `-h, --help` | Show usage |
+
+## Configuration
+
+Configuration file (optional): `~/.config/worktree-dev/config.yaml`
+
+```yaml
+base_branch: main      # Default base branch for new worktrees
+no_claude: false        # Skip launching Claude in top pane
+```
+
+Environment variables (prefix `WT_`):
+
+```bash
+export WT_BASE_BRANCH=develop
+export WT_NO_CLAUDE=true
+```
+
+Precedence: environment variables > config file > defaults.
 
 ## Worktree Layout
 
@@ -166,13 +241,13 @@ Session tracking is stored at `~/.config/worktree-dev/state.json`:
       "branch": "feature/auth",
       "claude_session_id": "...",
       "shell_session_id": "...",
-      "created_at": "2026-02-08T12:00:00"
+      "created_at": "2026-02-08T12:00:00Z"
     }
   }
 }
 ```
 
-State is automatically pruned when running `list` — entries for worktrees that no longer exist in git are removed.
+State is automatically pruned when running `list`. Use `wt prune` for explicit cleanup.
 
 ## iTerm2 Sessions
 
@@ -189,27 +264,26 @@ Each worktree gets a dedicated iTerm2 **window** (not tab) with two panes:
 +------------------------------------------+
 ```
 
-Sessions are named `wt:<repo>:<dirname>:<pane>` for visual identification. Since running programs (like Claude) can overwrite session names, the script tracks sessions by their unique IDs in the state file rather than by name.
+Sessions are named `wt:<repo>:<dirname>:<pane>` for visual identification. The tool tracks sessions by their unique IDs in the state file rather than by name.
 
 ## Repo Detection
 
-The script works from any directory inside a repo or worktree. It uses `git rev-parse --git-common-dir` to find the shared `.git` directory and derive the main repo root, so you can run `wt list` from within a worktree and it will show all worktrees for that repo.
+`wt` works from any directory inside a repo or worktree. It uses `git rev-parse --git-common-dir` to find the shared `.git` directory and derive the main repo root, so you can run `wt list` from within a worktree and it will show all worktrees for that repo.
 
 ## Dependencies
 
-| Dependency | Purpose | Install |
-|------------|---------|---------|
-| `git` | Worktree operations | Xcode CLT / Homebrew |
-| `jq` | JSON state file manipulation | `brew install jq` |
-| `osascript` | iTerm2 AppleScript automation | Built into macOS |
-| iTerm2 | Terminal emulator | `brew install --cask iterm2` |
+| Dependency | Purpose |
+|------------|---------|
+| `git` | Worktree operations |
+| `osascript` | iTerm2 AppleScript automation (built into macOS) |
+| iTerm2 | Terminal emulator |
 
 ## Troubleshooting
 
-**iTerm2 auto-launch** — If iTerm2 isn't running, the script automatically launches it and waits up to 10 seconds for it to be ready.
+**iTerm2 auto-launch** — If iTerm2 isn't running, `wt` automatically launches it and waits up to 10 seconds for it to be ready.
 
-**Window status shows "stale"** — The iTerm2 window was closed but state still exists. Running `open` will create a new window and update the state. Running `list` auto-prunes entries for removed worktrees.
+**Window status shows "stale"** — The iTerm2 window was closed but state still exists. Running `open` will create a new window and update the state. Running `wt prune` cleans up stale entries.
 
-**Branch name resolution** — You can use the full branch name (`feature/auth`) or just the dirname (`auth`). The script tries both when resolving.
+**Branch name resolution** — You can use the full branch name (`feature/auth`) or just the dirname (`auth`). The tool tries both when resolving.
 
-**Force delete** — If a worktree has uncommitted changes, `delete` will fail. Use `--force` to override. Combined with `--delete-branch`, this will also force-delete unmerged branches.
+**Safety checks on delete** — If a worktree has uncommitted changes or unpushed commits, `delete` will prompt for confirmation. Use `--force` to skip all checks.
