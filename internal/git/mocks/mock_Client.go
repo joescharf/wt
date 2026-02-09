@@ -123,6 +123,63 @@ func (_c *MockClient_BranchExists_Call) RunAndReturn(run func(string) (bool, err
 	return _c
 }
 
+// BranchList provides a mock function with no fields
+func (_m *MockClient) BranchList() ([]string, error) {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for BranchList")
+	}
+
+	var r0 []string
+	var r1 error
+	if rf, ok := ret.Get(0).(func() ([]string, error)); ok {
+		return rf()
+	}
+	if rf, ok := ret.Get(0).(func() []string); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockClient_BranchList_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BranchList'
+type MockClient_BranchList_Call struct {
+	*mock.Call
+}
+
+// BranchList is a helper method to define mock.On call
+func (_e *MockClient_Expecter) BranchList() *MockClient_BranchList_Call {
+	return &MockClient_BranchList_Call{Call: _e.mock.On("BranchList")}
+}
+
+func (_c *MockClient_BranchList_Call) Run(run func()) *MockClient_BranchList_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockClient_BranchList_Call) Return(_a0 []string, _a1 error) *MockClient_BranchList_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockClient_BranchList_Call) RunAndReturn(run func() ([]string, error)) *MockClient_BranchList_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CurrentBranch provides a mock function with given fields: worktreePath
 func (_m *MockClient) CurrentBranch(worktreePath string) (string, error) {
 	ret := _m.Called(worktreePath)
@@ -175,6 +232,119 @@ func (_c *MockClient_CurrentBranch_Call) Return(_a0 string, _a1 error) *MockClie
 }
 
 func (_c *MockClient_CurrentBranch_Call) RunAndReturn(run func(string) (string, error)) *MockClient_CurrentBranch_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// HasUnpushedCommits provides a mock function with given fields: path, baseBranch
+func (_m *MockClient) HasUnpushedCommits(path string, baseBranch string) (bool, error) {
+	ret := _m.Called(path, baseBranch)
+
+	if len(ret) == 0 {
+		panic("no return value specified for HasUnpushedCommits")
+	}
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, string) (bool, error)); ok {
+		return rf(path, baseBranch)
+	}
+	if rf, ok := ret.Get(0).(func(string, string) bool); ok {
+		r0 = rf(path, baseBranch)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(string, string) error); ok {
+		r1 = rf(path, baseBranch)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockClient_HasUnpushedCommits_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HasUnpushedCommits'
+type MockClient_HasUnpushedCommits_Call struct {
+	*mock.Call
+}
+
+// HasUnpushedCommits is a helper method to define mock.On call
+//   - path string
+//   - baseBranch string
+func (_e *MockClient_Expecter) HasUnpushedCommits(path interface{}, baseBranch interface{}) *MockClient_HasUnpushedCommits_Call {
+	return &MockClient_HasUnpushedCommits_Call{Call: _e.mock.On("HasUnpushedCommits", path, baseBranch)}
+}
+
+func (_c *MockClient_HasUnpushedCommits_Call) Run(run func(path string, baseBranch string)) *MockClient_HasUnpushedCommits_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockClient_HasUnpushedCommits_Call) Return(_a0 bool, _a1 error) *MockClient_HasUnpushedCommits_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockClient_HasUnpushedCommits_Call) RunAndReturn(run func(string, string) (bool, error)) *MockClient_HasUnpushedCommits_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// IsWorktreeDirty provides a mock function with given fields: path
+func (_m *MockClient) IsWorktreeDirty(path string) (bool, error) {
+	ret := _m.Called(path)
+
+	if len(ret) == 0 {
+		panic("no return value specified for IsWorktreeDirty")
+	}
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) (bool, error)); ok {
+		return rf(path)
+	}
+	if rf, ok := ret.Get(0).(func(string) bool); ok {
+		r0 = rf(path)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(path)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockClient_IsWorktreeDirty_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsWorktreeDirty'
+type MockClient_IsWorktreeDirty_Call struct {
+	*mock.Call
+}
+
+// IsWorktreeDirty is a helper method to define mock.On call
+//   - path string
+func (_e *MockClient_Expecter) IsWorktreeDirty(path interface{}) *MockClient_IsWorktreeDirty_Call {
+	return &MockClient_IsWorktreeDirty_Call{Call: _e.mock.On("IsWorktreeDirty", path)}
+}
+
+func (_c *MockClient_IsWorktreeDirty_Call) Run(run func(path string)) *MockClient_IsWorktreeDirty_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockClient_IsWorktreeDirty_Call) Return(_a0 bool, _a1 error) *MockClient_IsWorktreeDirty_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockClient_IsWorktreeDirty_Call) RunAndReturn(run func(string) (bool, error)) *MockClient_IsWorktreeDirty_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -447,6 +617,51 @@ func (_c *MockClient_WorktreeList_Call) Return(_a0 []git.WorktreeInfo, _a1 error
 }
 
 func (_c *MockClient_WorktreeList_Call) RunAndReturn(run func() ([]git.WorktreeInfo, error)) *MockClient_WorktreeList_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// WorktreePrune provides a mock function with no fields
+func (_m *MockClient) WorktreePrune() error {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for WorktreePrune")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func() error); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockClient_WorktreePrune_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WorktreePrune'
+type MockClient_WorktreePrune_Call struct {
+	*mock.Call
+}
+
+// WorktreePrune is a helper method to define mock.On call
+func (_e *MockClient_Expecter) WorktreePrune() *MockClient_WorktreePrune_Call {
+	return &MockClient_WorktreePrune_Call{Call: _e.mock.On("WorktreePrune")}
+}
+
+func (_c *MockClient_WorktreePrune_Call) Run(run func()) *MockClient_WorktreePrune_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockClient_WorktreePrune_Call) Return(_a0 error) *MockClient_WorktreePrune_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClient_WorktreePrune_Call) RunAndReturn(run func() error) *MockClient_WorktreePrune_Call {
 	_c.Call.Return(run)
 	return _c
 }

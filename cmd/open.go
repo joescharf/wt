@@ -16,9 +16,10 @@ import (
 var openNoClaude bool
 
 var openCmd = &cobra.Command{
-	Use:   "open <branch>",
-	Short: "Open or focus iTerm2 window for an existing worktree",
-	Args:  cobra.ExactArgs(1),
+	Use:               "open <branch>",
+	Short:             "Open or focus iTerm2 window for an existing worktree",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: completeWorktreeNames,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return openRun(args[0])
 	},

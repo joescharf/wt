@@ -28,6 +28,10 @@ type Client interface {
 	BranchDelete(branch string, force bool) error
 	CurrentBranch(worktreePath string) (string, error)
 	ResolveWorktree(input string) (string, error)
+	BranchList() ([]string, error)
+	IsWorktreeDirty(path string) (bool, error)
+	HasUnpushedCommits(path, baseBranch string) (bool, error)
+	WorktreePrune() error
 }
 
 // RealClient implements Client using real git commands.
@@ -199,6 +203,62 @@ func (c *RealClient) BranchDelete(branch string, force bool) error {
 	out, err := exec.Command("git", "-C", root, "branch", flag, branch).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("git branch delete failed: %s: %w", strings.TrimSpace(string(out)), err)
+	}
+	return nil
+}
+
+func (c *RealClient) BranchList() ([]string, error) {
+	root, err := c.RepoRoot()
+	if err != nil {
+		return nil, err
+	}
+
+	out, err := exec.Command("git", "-C", root, "branch", "--format=%(refname:short)").Output()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list branches: %w", err)
+	}
+
+	var branches []string
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		if line != "" {
+			branches = append(branches, line)
+		}
+	}
+	return branches, nil
+}
+
+func (c *RealClient) IsWorktreeDirty(path string) (bool, error) {
+	out, err := exec.Command("git", "-C", path, "status", "--porcelain").Output()
+	if err != nil {
+		return false, fmt.Errorf("failed to check worktree status: %w", err)
+	}
+	return strings.TrimSpace(string(out)) != "", nil
+}
+
+func (c *RealClient) HasUnpushedCommits(path, baseBranch string) (bool, error) {
+	// Try upstream first
+	out, err := exec.Command("git", "-C", path, "log", "@{upstream}..HEAD", "--oneline").Output()
+	if err == nil {
+		return strings.TrimSpace(string(out)) != "", nil
+	}
+
+	// No upstream configured, fall back to baseBranch
+	out, err = exec.Command("git", "-C", path, "log", baseBranch+"..HEAD", "--oneline").Output()
+	if err != nil {
+		return false, fmt.Errorf("failed to check unpushed commits: %w", err)
+	}
+	return strings.TrimSpace(string(out)) != "", nil
+}
+
+func (c *RealClient) WorktreePrune() error {
+	root, err := c.RepoRoot()
+	if err != nil {
+		return err
+	}
+
+	out, err := exec.Command("git", "-C", root, "worktree", "prune").CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("git worktree prune failed: %s: %w", strings.TrimSpace(string(out)), err)
 	}
 	return nil
 }
