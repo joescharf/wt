@@ -11,9 +11,11 @@ import (
 )
 
 var (
-	syncBase  string
-	syncForce bool
-	syncAll   bool
+	syncBase   string
+	syncForce  bool
+	syncAll    bool
+	syncRebase bool
+	syncMerge  bool
 )
 
 var syncCmd = &cobra.Command{
@@ -37,6 +39,8 @@ func init() {
 	syncCmd.Flags().StringVar(&syncBase, "base", "", "Base branch to sync from (default from config)")
 	syncCmd.Flags().BoolVar(&syncForce, "force", false, "Skip dirty worktree safety check")
 	syncCmd.Flags().BoolVar(&syncAll, "all", false, "Sync all worktrees")
+	syncCmd.Flags().BoolVar(&syncRebase, "rebase", false, "Use rebase instead of merge")
+	syncCmd.Flags().BoolVar(&syncMerge, "merge", false, "Use merge (overrides config rebase default)")
 	syncCmd.RegisterFlagCompletionFunc("base", completeBranchNames)
 	rootCmd.AddCommand(syncCmd)
 }
@@ -76,14 +80,23 @@ func syncRun(branch string) error {
 		}
 	}
 
-	// Check if a merge is already in progress (idempotent — pick up where we left off)
+	strategy := resolveStrategy(syncRebase, syncMerge)
+
+	// Check if a merge or rebase is already in progress (idempotent — pick up where we left off)
 	mergeInProgress, err := gitClient.IsMergeInProgress(wtPath)
 	if err != nil {
 		output.VerboseLog("Could not check merge status: %v", err)
 	}
-
 	if mergeInProgress {
 		return syncContinue(wtPath, branchName, baseBranch)
+	}
+
+	rebaseInProgress, err := gitClient.IsRebaseInProgress(wtPath)
+	if err != nil {
+		output.VerboseLog("Could not check rebase status: %v", err)
+	}
+	if rebaseInProgress {
+		return syncContinueRebase(wtPath, branchName, baseBranch)
 	}
 
 	// Determine merge source based on remote availability
@@ -127,17 +140,30 @@ func syncRun(branch string) error {
 		return nil
 	}
 
-	output.Info("Merging %d commit(s) from '%s' into '%s'", behind, ui.Cyan(baseBranch), ui.Cyan(branchName))
+	if strategy == "rebase" {
+		output.Info("Rebasing '%s' onto '%s' (%d commit(s) behind)", ui.Cyan(branchName), ui.Cyan(baseBranch), behind)
 
-	// Merge base branch into feature branch (in worktree dir)
-	if dryRun {
-		output.DryRunMsg("Would merge '%s' into '%s'", mergeSource, branchName)
-	} else {
-		if err := gitClient.Merge(wtPath, mergeSource); err != nil {
-			output.Error("Merge failed — resolve conflicts, then run 'wt sync %s' again", dirname)
-			return fmt.Errorf("merge conflict: %w", err)
+		if dryRun {
+			output.DryRunMsg("Would rebase '%s' onto '%s'", branchName, mergeSource)
+		} else {
+			if err := gitClient.Rebase(wtPath, mergeSource); err != nil {
+				output.Error("Rebase failed — resolve conflicts, then run 'wt sync %s' again (or 'git -C %s rebase --abort' to cancel)", dirname, wtPath)
+				return fmt.Errorf("rebase conflict: %w", err)
+			}
+			output.Success("Rebased '%s' onto '%s'", branchName, baseBranch)
 		}
-		output.Success("Synced '%s' with '%s'", branchName, baseBranch)
+	} else {
+		output.Info("Merging %d commit(s) from '%s' into '%s'", behind, ui.Cyan(baseBranch), ui.Cyan(branchName))
+
+		if dryRun {
+			output.DryRunMsg("Would merge '%s' into '%s'", mergeSource, branchName)
+		} else {
+			if err := gitClient.Merge(wtPath, mergeSource); err != nil {
+				output.Error("Merge failed — resolve conflicts, then run 'wt sync %s' again", dirname)
+				return fmt.Errorf("merge conflict: %w", err)
+			}
+			output.Success("Synced '%s' with '%s'", branchName, baseBranch)
+		}
 	}
 
 	return nil
@@ -180,6 +206,30 @@ func syncContinue(wtPath, branchName, baseBranch string) error {
 	return nil
 }
 
+func syncContinueRebase(wtPath, branchName, baseBranch string) error {
+	dirname := filepath.Base(wtPath)
+	output.Info("Rebase in progress — continuing sync of '%s' with '%s'", ui.Cyan(branchName), ui.Cyan(baseBranch))
+
+	hasConflicts, err := gitClient.HasConflicts(wtPath)
+	if err != nil {
+		output.VerboseLog("Could not check conflict status: %v", err)
+	}
+	if hasConflicts {
+		return fmt.Errorf("worktree '%s' has unresolved conflicts — resolve all conflicts and stage files, then run 'wt sync %s' again (or 'git -C %s rebase --abort' to cancel)", dirname, dirname, wtPath)
+	}
+
+	if dryRun {
+		output.DryRunMsg("Would run: git rebase --continue")
+	} else {
+		if err := gitClient.RebaseContinue(wtPath); err != nil {
+			return fmt.Errorf("rebase --continue failed: %w", err)
+		}
+		output.Success("Sync continued — '%s' rebased onto '%s'", branchName, baseBranch)
+	}
+
+	return nil
+}
+
 func syncAllRun() error {
 	worktrees, err := gitClient.WorktreeList()
 	if err != nil {
@@ -195,6 +245,8 @@ func syncAllRun() error {
 	if baseBranch == "" {
 		baseBranch = viper.GetString("base_branch")
 	}
+
+	strategy := resolveStrategy(syncRebase, syncMerge)
 
 	// Filter out main repo entry
 	type wtEntry struct {
@@ -250,13 +302,23 @@ func syncAllRun() error {
 			continue
 		}
 
-		// Skip if merge in progress
-		inProgress, err := gitClient.IsMergeInProgress(entry.path)
+		// Skip if merge or rebase in progress
+		mergeIP, err := gitClient.IsMergeInProgress(entry.path)
 		if err != nil {
 			output.VerboseLog("Could not check merge status of '%s': %v", dirname, err)
 		}
-		if inProgress {
+		if mergeIP {
 			output.Warning("Skipping '%s' — merge in progress", dirname)
+			skipped++
+			continue
+		}
+
+		rebaseIP, err := gitClient.IsRebaseInProgress(entry.path)
+		if err != nil {
+			output.VerboseLog("Could not check rebase status of '%s': %v", dirname, err)
+		}
+		if rebaseIP {
+			output.Warning("Skipping '%s' — rebase in progress", dirname)
 			skipped++
 			continue
 		}
@@ -271,21 +333,39 @@ func syncAllRun() error {
 			continue
 		}
 
-		output.Info("'%s' %s — merging %d commit(s)", entry.branch, formatSyncStatus(ahead, behind), behind)
+		if strategy == "rebase" {
+			output.Info("'%s' %s — rebasing onto %s", entry.branch, formatSyncStatus(ahead, behind), baseBranch)
 
-		if dryRun {
-			output.DryRunMsg("Would merge '%s' into '%s'", mergeSource, entry.branch)
+			if dryRun {
+				output.DryRunMsg("Would rebase '%s' onto '%s'", entry.branch, mergeSource)
+				synced++
+				continue
+			}
+
+			if err := gitClient.Rebase(entry.path, mergeSource); err != nil {
+				output.Error("Conflict rebasing '%s' — resolve and run 'wt sync %s'", dirname, dirname)
+				conflicts++
+				continue
+			}
+			output.Success("Rebased '%s'", entry.branch)
 			synced++
-			continue
-		}
+		} else {
+			output.Info("'%s' %s — merging %d commit(s)", entry.branch, formatSyncStatus(ahead, behind), behind)
 
-		if err := gitClient.Merge(entry.path, mergeSource); err != nil {
-			output.Error("Conflict syncing '%s' — resolve and run 'wt sync %s'", dirname, dirname)
-			conflicts++
-			continue
+			if dryRun {
+				output.DryRunMsg("Would merge '%s' into '%s'", mergeSource, entry.branch)
+				synced++
+				continue
+			}
+
+			if err := gitClient.Merge(entry.path, mergeSource); err != nil {
+				output.Error("Conflict syncing '%s' — resolve and run 'wt sync %s'", dirname, dirname)
+				conflicts++
+				continue
+			}
+			output.Success("Synced '%s'", entry.branch)
+			synced++
 		}
-		output.Success("Synced '%s'", entry.branch)
-		synced++
 	}
 
 	fmt.Fprintln(output.Out)

@@ -164,6 +164,7 @@ Merges a worktree's branch into the base branch (local merge by default) or crea
 
 ```bash
 wt merge feature/auth                        # Local merge into main + cleanup
+wt merge feature/auth --rebase               # Rebase-then-fast-forward merge
 wt merge feature/auth --pr                   # Push + create PR via gh CLI
 wt merge feature/auth --pr --draft           # Create draft PR
 wt merge feature/auth --pr --title "Add auth" # PR with custom title
@@ -173,7 +174,7 @@ wt merge feature/auth -n                     # Dry-run
 wt mg feature/auth                           # alias
 ```
 
-**Local merge flow:**
+**Local merge flow (default):**
 
 1. Safety checks (dirty worktree → error, use `--force` to skip)
 2. Verifies main repo is on the base branch
@@ -182,16 +183,28 @@ wt mg feature/auth                           # alias
 5. Pushes base branch (if remote exists)
 6. Cleans up worktree (unless `--no-cleanup`)
 
+**Rebase-then-fast-forward flow** (`--rebase`):
+
+1. Same safety checks
+2. Rebases the feature branch onto the base branch (in the worktree)
+3. Fast-forward merges the rebased feature tip into the base branch (in the main repo)
+4. Pushes and cleans up as normal
+
+This produces a linear commit history without merge commits.
+
 **PR flow:**
 
 1. Same safety checks
 2. Pushes branch to remote
 3. Creates PR via `gh pr create`
 4. Worktree is kept for PR review
+5. `--rebase` is ignored (merge strategy is configured on GitHub)
 
 | Flag           | Default | Description                                  |
 | -------------- | ------- | -------------------------------------------- |
 | `--pr`         | `false` | Create PR instead of local merge             |
+| `--rebase`     | `false` | Use rebase-then-fast-forward instead of merge|
+| `--merge`      | `false` | Use merge (overrides config `rebase` default)|
 | `--no-cleanup` | `false` | Keep worktree after merge                    |
 | `--base`       | config  | Target branch (default from `base_branch`)   |
 | `--title`      | —       | PR title (`--pr` only)                       |
@@ -201,13 +214,15 @@ wt mg feature/auth                           # alias
 
 ### `sync [branch]`
 
-Syncs a worktree with the base branch by merging base into the feature branch. Reports ahead/behind status before merging so you know exactly what will happen. **Idempotent** — if a merge has conflicts, resolve them and run `wt sync` again to continue.
+Syncs a worktree with the base branch by merging (or rebasing onto) the base branch. Reports ahead/behind status before syncing so you know exactly what will happen. **Idempotent** — if a merge or rebase has conflicts, resolve them and run `wt sync` again to continue.
 
 ```bash
 wt sync feature/auth                   # Sync with main (fetches if remote exists)
+wt sync feature/auth --rebase          # Rebase onto main instead of merging
 wt sync feature/auth --base develop    # Sync with develop instead
 wt sync feature/auth --force           # Skip dirty worktree check
 wt sync --all                          # Sync all worktrees at once
+wt sync --all --rebase                 # Rebase all worktrees onto base
 wt sync -n feature/auth                # Dry-run
 wt sy feature/auth                     # alias
 ```
@@ -215,19 +230,21 @@ wt sy feature/auth                     # alias
 **What happens:**
 
 1. Safety checks (dirty worktree → error, use `--force` to skip)
-2. If a merge is already in progress, picks up where it left off
+2. If a merge or rebase is already in progress, picks up where it left off
 3. Fetches latest changes (if remote exists)
-4. Reports status (`+2 -3` means 2 ahead, 3 behind)
+4. Reports status (`↑2 ↓3` means 2 ahead, 3 behind)
 5. If already in sync (0 behind), exits early
-6. Merges base branch into feature branch
+6. Merges base branch into feature branch (default) or rebases feature onto base (`--rebase`)
 
-**Sync all** (`--all`) fetches once, then syncs each worktree. Skips dirty worktrees and those with in-progress merges, reports per-worktree status.
+**Sync all** (`--all`) fetches once, then syncs each worktree. Skips dirty worktrees and those with in-progress merges/rebases, reports per-worktree status.
 
-| Flag      | Default | Description                                |
-| --------- | ------- | ------------------------------------------ |
-| `--all`   | `false` | Sync all worktrees                         |
-| `--base`  | config  | Base branch (default from `base_branch`)   |
-| `--force` | `false` | Skip dirty worktree safety check           |
+| Flag       | Default | Description                                |
+| ---------- | ------- | ------------------------------------------ |
+| `--all`    | `false` | Sync all worktrees                         |
+| `--rebase` | `false` | Rebase onto base instead of merging        |
+| `--merge`  | `false` | Use merge (overrides config `rebase` default) |
+| `--base`   | config  | Base branch (default from `base_branch`)   |
+| `--force`  | `false` | Skip dirty worktree safety check           |
 
 ### `delete [branch]`
 
@@ -303,8 +320,9 @@ wt version
 Configuration file (optional): `~/.config/wt/config.yaml`
 
 ```yaml
-base_branch: main # Default base branch for new worktrees
-no_claude: false # Skip launching Claude in top pane
+base_branch: main  # Default base branch for new worktrees
+no_claude: false    # Skip launching Claude in top pane
+rebase: false       # Use rebase instead of merge for sync/merge commands
 ```
 
 Environment variables (prefix `WT_`):
@@ -312,7 +330,10 @@ Environment variables (prefix `WT_`):
 ```bash
 export WT_BASE_BRANCH=develop
 export WT_NO_CLAUDE=true
+export WT_REBASE=true          # Make rebase the default strategy
 ```
+
+When `rebase: true` is set in config (or `WT_REBASE=true`), `sync` and `merge` will use rebase by default. Use `--merge` on any command to override back to merge.
 
 Precedence: environment variables > config file > defaults.
 
@@ -390,10 +411,10 @@ Sessions are named `wt:<repo>:<dirname>:<pane>` for visual identification. The t
 
 **Safety checks on delete** — If a worktree has uncommitted changes or unpushed commits, `delete` will prompt for confirmation. Use `--force` to skip all checks.
 
-**Merge conflict** — If `merge` encounters a conflict, it stops without cleaning up the worktree. Resolve the conflicts in the main repo, stage the files (`git add`), then run `wt merge <branch>` again — it detects the in-progress merge and continues automatically.
+**Merge conflict** — If `merge` encounters a conflict (merge or rebase), it stops without cleaning up the worktree. Resolve the conflicts, stage the files (`git add`), then run `wt merge <branch>` again — it detects the in-progress merge/rebase and continues automatically. For rebase conflicts, you can also abort with `git rebase --abort` in the worktree.
 
 **`gh` CLI not found** — The `--pr` flag requires the GitHub CLI. Install it from [cli.github.com](https://cli.github.com). You must also be authenticated (`gh auth login`).
 
-**Sync conflict** — If `sync` encounters a merge conflict, it stops. Resolve the conflicts in the worktree, stage the files (`git add`), then run `wt sync <branch>` again — it detects the in-progress merge and continues automatically.
+**Sync conflict** — If `sync` encounters a conflict (merge or rebase), it stops. Resolve the conflicts in the worktree, stage the files (`git add`), then run `wt sync <branch>` again — it detects the in-progress merge/rebase and continues automatically. For rebase conflicts, you can also abort with `git rebase --abort` in the worktree.
 
 **Main repo not on base branch** — `merge` (local mode) requires the main repo to be on the target base branch. If you see this error, `cd` to the main repo and `git checkout main` (or your configured base branch) first.

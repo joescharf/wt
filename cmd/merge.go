@@ -20,6 +20,8 @@ var (
 	mergeBody      string
 	mergeDraft     bool
 	mergeForce     bool
+	mergeRebase    bool
+	mergeMerge     bool
 )
 
 // ghPRCreateFunc is the function used to create a PR via gh CLI, replaceable in tests.
@@ -49,6 +51,8 @@ func init() {
 	mergeCmd.Flags().StringVar(&mergeBody, "body", "", "PR body (--pr only, uses --fill if empty)")
 	mergeCmd.Flags().BoolVar(&mergeDraft, "draft", false, "Create draft PR (--pr only)")
 	mergeCmd.Flags().BoolVar(&mergeForce, "force", false, "Skip safety checks")
+	mergeCmd.Flags().BoolVar(&mergeRebase, "rebase", false, "Use rebase-then-fast-forward instead of merge")
+	mergeCmd.Flags().BoolVar(&mergeMerge, "merge", false, "Use merge (overrides config rebase default)")
 	mergeCmd.RegisterFlagCompletionFunc("base", completeBranchNames)
 	rootCmd.AddCommand(mergeCmd)
 }
@@ -111,17 +115,25 @@ func mergeLocalRun(wtPath, branchName, baseBranch, dirname string) error {
 		return err
 	}
 
-	// Check if a merge is already in progress (idempotent — pick up where we left off)
+	strategy := resolveStrategy(mergeRebase, mergeMerge)
+
+	// Check if a merge is already in progress in main repo
 	mergeInProgress, err := gitClient.IsMergeInProgress(repoRoot)
 	if err != nil {
 		output.VerboseLog("Could not check merge status: %v", err)
 	}
-
 	if mergeInProgress {
 		return mergeLocalContinue(repoRoot, wtPath, branchName, baseBranch)
 	}
 
-	output.Info("Merging '%s' into '%s'", ui.Cyan(branchName), ui.Cyan(baseBranch))
+	// Check if a rebase is in progress in the worktree (rebase-then-ff flow)
+	rebaseInProgress, err := gitClient.IsRebaseInProgress(wtPath)
+	if err != nil {
+		output.VerboseLog("Could not check rebase status: %v", err)
+	}
+	if rebaseInProgress {
+		return mergeLocalContinueRebase(repoRoot, wtPath, branchName, baseBranch)
+	}
 
 	// Verify main repo is on the base branch
 	currentBranch, err := gitClient.CurrentBranch(repoRoot)
@@ -149,17 +161,49 @@ func mergeLocalRun(wtPath, branchName, baseBranch, dirname string) error {
 		}
 	}
 
-	// Merge feature branch
-	if dryRun {
-		output.DryRunMsg("Would merge '%s' into '%s'", branchName, baseBranch)
-	} else {
-		output.Info("Merging branch '%s'", branchName)
-		if err := gitClient.Merge(repoRoot, branchName); err != nil {
-			output.Error("Merge failed — resolve conflicts, then run 'wt merge %s' again", dirname)
-			output.Info("Worktree kept at: %s", wtPath)
-			return fmt.Errorf("merge conflict: %w", err)
+	if strategy == "rebase" {
+		// Rebase-then-fast-forward flow:
+		// 1. Rebase feature branch onto base in the worktree
+		// 2. Fast-forward merge base to rebased feature tip in main repo
+		rebaseTarget := baseBranch
+		if hasRemote {
+			rebaseTarget = "origin/" + baseBranch
 		}
-		output.Success("Merged '%s' into '%s'", branchName, baseBranch)
+
+		output.Info("Rebasing '%s' onto '%s'", ui.Cyan(branchName), ui.Cyan(baseBranch))
+
+		if dryRun {
+			output.DryRunMsg("Would rebase '%s' onto '%s'", branchName, rebaseTarget)
+			output.DryRunMsg("Would fast-forward merge '%s' into '%s'", branchName, baseBranch)
+		} else {
+			if err := gitClient.Rebase(wtPath, rebaseTarget); err != nil {
+				output.Error("Rebase failed — resolve conflicts, then run 'wt merge %s' again (or 'git -C %s rebase --abort' to cancel)", dirname, wtPath)
+				output.Info("Worktree kept at: %s", wtPath)
+				return fmt.Errorf("rebase conflict: %w", err)
+			}
+			output.Success("Rebased '%s' onto '%s'", branchName, baseBranch)
+
+			// Fast-forward merge into base
+			output.Info("Fast-forward merging '%s' into '%s'", ui.Cyan(branchName), ui.Cyan(baseBranch))
+			if err := gitClient.Merge(repoRoot, branchName); err != nil {
+				return fmt.Errorf("fast-forward merge failed: %w", err)
+			}
+			output.Success("Merged '%s' into '%s'", branchName, baseBranch)
+		}
+	} else {
+		output.Info("Merging '%s' into '%s'", ui.Cyan(branchName), ui.Cyan(baseBranch))
+
+		if dryRun {
+			output.DryRunMsg("Would merge '%s' into '%s'", branchName, baseBranch)
+		} else {
+			output.Info("Merging branch '%s'", branchName)
+			if err := gitClient.Merge(repoRoot, branchName); err != nil {
+				output.Error("Merge failed — resolve conflicts, then run 'wt merge %s' again", dirname)
+				output.Info("Worktree kept at: %s", wtPath)
+				return fmt.Errorf("merge conflict: %w", err)
+			}
+			output.Success("Merged '%s' into '%s'", branchName, baseBranch)
+		}
 	}
 
 	return mergeLocalFinish(repoRoot, wtPath, branchName, baseBranch)
@@ -185,6 +229,39 @@ func mergeLocalContinue(repoRoot, wtPath, branchName, baseBranch string) error {
 			return fmt.Errorf("merge --continue failed: %w", err)
 		}
 		output.Success("Merge continued — '%s' merged into '%s'", branchName, baseBranch)
+	}
+
+	return mergeLocalFinish(repoRoot, wtPath, branchName, baseBranch)
+}
+
+// mergeLocalContinueRebase resumes a rebase-then-ff merge when the rebase had conflicts.
+func mergeLocalContinueRebase(repoRoot, wtPath, branchName, baseBranch string) error {
+	output.Info("Rebase in progress — continuing merge of '%s' into '%s'", ui.Cyan(branchName), ui.Cyan(baseBranch))
+
+	// Check that all conflicts are resolved
+	hasConflicts, err := gitClient.HasConflicts(wtPath)
+	if err != nil {
+		output.VerboseLog("Could not check conflict status: %v", err)
+	}
+	if hasConflicts {
+		return fmt.Errorf("worktree has unresolved conflicts — resolve all conflicts and stage files, then run 'wt merge %s' again (or 'git -C %s rebase --abort' to cancel)", filepath.Base(wtPath), wtPath)
+	}
+
+	if dryRun {
+		output.DryRunMsg("Would run: git rebase --continue")
+		output.DryRunMsg("Would fast-forward merge '%s' into '%s'", branchName, baseBranch)
+	} else {
+		if err := gitClient.RebaseContinue(wtPath); err != nil {
+			return fmt.Errorf("rebase --continue failed: %w", err)
+		}
+		output.Success("Rebase continued — '%s' rebased onto '%s'", branchName, baseBranch)
+
+		// Fast-forward merge into base
+		output.Info("Fast-forward merging '%s' into '%s'", ui.Cyan(branchName), ui.Cyan(baseBranch))
+		if err := gitClient.Merge(repoRoot, branchName); err != nil {
+			return fmt.Errorf("fast-forward merge failed: %w", err)
+		}
+		output.Success("Merged '%s' into '%s'", branchName, baseBranch)
 	}
 
 	return mergeLocalFinish(repoRoot, wtPath, branchName, baseBranch)
@@ -226,6 +303,10 @@ func mergeLocalFinish(repoRoot, wtPath, branchName, baseBranch string) error {
 }
 
 func mergePRRun(wtPath, branchName, baseBranch, dirname string) error {
+	if mergeRebase {
+		output.Warning("--rebase is ignored for PR mode (merge strategy is configured on GitHub)")
+	}
+
 	output.Info("Creating PR for '%s' → '%s'", ui.Cyan(branchName), ui.Cyan(baseBranch))
 
 	// Verify gh CLI is available

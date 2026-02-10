@@ -620,6 +620,62 @@ func (_c *MockClient_IsMergeInProgress_Call) RunAndReturn(run func(string) (bool
 	return _c
 }
 
+// IsRebaseInProgress provides a mock function with given fields: repoPath
+func (_m *MockClient) IsRebaseInProgress(repoPath string) (bool, error) {
+	ret := _m.Called(repoPath)
+
+	if len(ret) == 0 {
+		panic("no return value specified for IsRebaseInProgress")
+	}
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) (bool, error)); ok {
+		return rf(repoPath)
+	}
+	if rf, ok := ret.Get(0).(func(string) bool); ok {
+		r0 = rf(repoPath)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(repoPath)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockClient_IsRebaseInProgress_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsRebaseInProgress'
+type MockClient_IsRebaseInProgress_Call struct {
+	*mock.Call
+}
+
+// IsRebaseInProgress is a helper method to define mock.On call
+//   - repoPath string
+func (_e *MockClient_Expecter) IsRebaseInProgress(repoPath interface{}) *MockClient_IsRebaseInProgress_Call {
+	return &MockClient_IsRebaseInProgress_Call{Call: _e.mock.On("IsRebaseInProgress", repoPath)}
+}
+
+func (_c *MockClient_IsRebaseInProgress_Call) Run(run func(repoPath string)) *MockClient_IsRebaseInProgress_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockClient_IsRebaseInProgress_Call) Return(_a0 bool, _a1 error) *MockClient_IsRebaseInProgress_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockClient_IsRebaseInProgress_Call) RunAndReturn(run func(string) (bool, error)) *MockClient_IsRebaseInProgress_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // IsWorktreeDirty provides a mock function with given fields: path
 func (_m *MockClient) IsWorktreeDirty(path string) (bool, error) {
 	ret := _m.Called(path)
@@ -859,6 +915,145 @@ func (_c *MockClient_Push_Call) Return(_a0 error) *MockClient_Push_Call {
 }
 
 func (_c *MockClient_Push_Call) RunAndReturn(run func(string, string, bool) error) *MockClient_Push_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Rebase provides a mock function with given fields: repoPath, branch
+func (_m *MockClient) Rebase(repoPath string, branch string) error {
+	ret := _m.Called(repoPath, branch)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Rebase")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, string) error); ok {
+		r0 = rf(repoPath, branch)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockClient_Rebase_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Rebase'
+type MockClient_Rebase_Call struct {
+	*mock.Call
+}
+
+// Rebase is a helper method to define mock.On call
+//   - repoPath string
+//   - branch string
+func (_e *MockClient_Expecter) Rebase(repoPath interface{}, branch interface{}) *MockClient_Rebase_Call {
+	return &MockClient_Rebase_Call{Call: _e.mock.On("Rebase", repoPath, branch)}
+}
+
+func (_c *MockClient_Rebase_Call) Run(run func(repoPath string, branch string)) *MockClient_Rebase_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockClient_Rebase_Call) Return(_a0 error) *MockClient_Rebase_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClient_Rebase_Call) RunAndReturn(run func(string, string) error) *MockClient_Rebase_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// RebaseAbort provides a mock function with given fields: repoPath
+func (_m *MockClient) RebaseAbort(repoPath string) error {
+	ret := _m.Called(repoPath)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RebaseAbort")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string) error); ok {
+		r0 = rf(repoPath)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockClient_RebaseAbort_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RebaseAbort'
+type MockClient_RebaseAbort_Call struct {
+	*mock.Call
+}
+
+// RebaseAbort is a helper method to define mock.On call
+//   - repoPath string
+func (_e *MockClient_Expecter) RebaseAbort(repoPath interface{}) *MockClient_RebaseAbort_Call {
+	return &MockClient_RebaseAbort_Call{Call: _e.mock.On("RebaseAbort", repoPath)}
+}
+
+func (_c *MockClient_RebaseAbort_Call) Run(run func(repoPath string)) *MockClient_RebaseAbort_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockClient_RebaseAbort_Call) Return(_a0 error) *MockClient_RebaseAbort_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClient_RebaseAbort_Call) RunAndReturn(run func(string) error) *MockClient_RebaseAbort_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// RebaseContinue provides a mock function with given fields: repoPath
+func (_m *MockClient) RebaseContinue(repoPath string) error {
+	ret := _m.Called(repoPath)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RebaseContinue")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string) error); ok {
+		r0 = rf(repoPath)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockClient_RebaseContinue_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RebaseContinue'
+type MockClient_RebaseContinue_Call struct {
+	*mock.Call
+}
+
+// RebaseContinue is a helper method to define mock.On call
+//   - repoPath string
+func (_e *MockClient_Expecter) RebaseContinue(repoPath interface{}) *MockClient_RebaseContinue_Call {
+	return &MockClient_RebaseContinue_Call{Call: _e.mock.On("RebaseContinue", repoPath)}
+}
+
+func (_c *MockClient_RebaseContinue_Call) Run(run func(repoPath string)) *MockClient_RebaseContinue_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockClient_RebaseContinue_Call) Return(_a0 error) *MockClient_RebaseContinue_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClient_RebaseContinue_Call) RunAndReturn(run func(string) error) *MockClient_RebaseContinue_Call {
 	_c.Call.Return(run)
 	return _c
 }

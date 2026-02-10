@@ -86,6 +86,7 @@ func initConfig() {
 	viper.SetDefault("state_dir", configDir)
 	viper.SetDefault("base_branch", "main")
 	viper.SetDefault("no_claude", false)
+	viper.SetDefault("rebase", false)
 
 	// Read config file if it exists (optional)
 	_ = viper.ReadInConfig()
@@ -106,4 +107,19 @@ func initDeps() {
 	if claudePath, err := claude.DefaultPath(); err == nil {
 		claudeTrust = claude.NewTrustManager(claudePath)
 	}
+}
+
+// resolveStrategy determines the merge strategy based on flags and config.
+// --rebase flag wins, then --merge flag wins, then config, then default "merge".
+func resolveStrategy(rebaseFlag, mergeFlag bool) string {
+	if rebaseFlag {
+		return "rebase"
+	}
+	if mergeFlag {
+		return "merge"
+	}
+	if viper.GetBool("rebase") {
+		return "rebase"
+	}
+	return "merge"
 }

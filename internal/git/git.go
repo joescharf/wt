@@ -36,6 +36,10 @@ type Client interface {
 	MergeContinue(repoPath string) error
 	IsMergeInProgress(repoPath string) (bool, error)
 	HasConflicts(repoPath string) (bool, error)
+	Rebase(repoPath, branch string) error
+	RebaseContinue(repoPath string) error
+	RebaseAbort(repoPath string) error
+	IsRebaseInProgress(repoPath string) (bool, error)
 	Pull(repoPath string) error
 	Push(worktreePath, branch string, setUpstream bool) error
 	HasRemote() (bool, error)
@@ -365,6 +369,56 @@ func (c *RealClient) HasConflicts(repoPath string) (bool, error) {
 		return false, fmt.Errorf("failed to check for conflicts: %w", err)
 	}
 	return strings.TrimSpace(string(out)) != "", nil
+}
+
+func (c *RealClient) Rebase(repoPath, branch string) error {
+	out, err := exec.Command("git", "-C", repoPath, "rebase", branch).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("git rebase failed: %s: %w", strings.TrimSpace(string(out)), err)
+	}
+	return nil
+}
+
+func (c *RealClient) RebaseContinue(repoPath string) error {
+	cmd := exec.Command("git", "-C", repoPath, "rebase", "--continue")
+	cmd.Env = append(os.Environ(), "GIT_EDITOR=true") // skip editor prompt
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("git rebase --continue failed: %s: %w", strings.TrimSpace(string(out)), err)
+	}
+	return nil
+}
+
+func (c *RealClient) RebaseAbort(repoPath string) error {
+	out, err := exec.Command("git", "-C", repoPath, "rebase", "--abort").CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("git rebase --abort failed: %s: %w", strings.TrimSpace(string(out)), err)
+	}
+	return nil
+}
+
+func (c *RealClient) IsRebaseInProgress(repoPath string) (bool, error) {
+	gitDir := filepath.Join(repoPath, ".git")
+	info, err := os.Stat(gitDir)
+	if err != nil {
+		return false, fmt.Errorf("cannot find .git directory: %w", err)
+	}
+	// If .git is a file (worktree), read the actual git dir
+	if !info.IsDir() {
+		data, err := os.ReadFile(gitDir)
+		if err != nil {
+			return false, err
+		}
+		gitDir = strings.TrimSpace(strings.TrimPrefix(string(data), "gitdir: "))
+	}
+	// Check for rebase-merge or rebase-apply directories
+	if _, err := os.Stat(filepath.Join(gitDir, "rebase-merge")); err == nil {
+		return true, nil
+	}
+	if _, err := os.Stat(filepath.Join(gitDir, "rebase-apply")); err == nil {
+		return true, nil
+	}
+	return false, nil
 }
 
 func (c *RealClient) Pull(repoPath string) error {
