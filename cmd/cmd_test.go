@@ -85,6 +85,8 @@ func setupTest(t *testing.T) *testEnv {
 	syncMerge = false
 	mergeRebase = false
 	mergeMerge = false
+	configForce = false
+	configDirFunc = defaultConfigDir
 	promptFunc = func(msg string) bool { return false } // default deny in tests
 
 	// Set viper defaults for tests

@@ -281,6 +281,24 @@ wt open auth             # dirname also works
 
 If the window is already open, focuses it instead.
 
+### `config`
+
+Show or manage wt configuration. Running bare `wt config` is the same as `wt config show`.
+
+```bash
+wt config                    # Show effective config (same as: wt config show)
+wt config init               # Create config.yaml with commented defaults
+wt config init --force       # Overwrite existing config file
+wt config show               # Show all keys with values and sources
+wt config edit               # Open config file in $EDITOR
+```
+
+**Subcommands:**
+
+- **`init`** — Creates `~/.config/wt/config.yaml` with commented defaults reflecting current effective values. Refuses to overwrite an existing file unless `--force` is passed. Respects `--dry-run`.
+- **`show`** — Displays each config key with its effective value and source: `(default)`, `(file)`, or `(env: WT_*)`.
+- **`edit`** — Opens the config file in `$EDITOR` (or `$VISUAL`). Errors if neither is set or if the config file doesn't exist yet.
+
 ### `prune`
 
 Cleans up stale state and git worktree tracking.
