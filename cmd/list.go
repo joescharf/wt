@@ -92,6 +92,16 @@ func listRun() error {
 			}
 
 			var parts []string
+			if rebasing, err := gitClient.IsRebaseInProgress(wt.Path); err != nil {
+				output.VerboseLog("Could not check rebase status for %s: %v", wt.Branch, err)
+			} else if rebasing {
+				parts = append(parts, "rebasing")
+			}
+			if merging, err := gitClient.IsMergeInProgress(wt.Path); err != nil {
+				output.VerboseLog("Could not check merge status for %s: %v", wt.Branch, err)
+			} else if merging {
+				parts = append(parts, "merging")
+			}
 			if dirty {
 				parts = append(parts, "dirty")
 			}

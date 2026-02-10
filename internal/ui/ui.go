@@ -75,7 +75,9 @@ func StatusColor(status string) string {
 // "dirty" (with or without ↑N/↓N) is red, "↑N"/"↓N" without dirty is yellow, "clean" is green.
 func GitStatusColor(status string) string {
 	switch {
-	case strings.HasPrefix(status, "dirty"):
+	case strings.HasPrefix(status, "rebasing"),
+		strings.HasPrefix(status, "merging"),
+		strings.HasPrefix(status, "dirty"):
 		return red(status)
 	case status == "clean":
 		return green(status)

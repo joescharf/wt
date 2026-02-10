@@ -123,11 +123,12 @@ Example output:
 ```
 Worktrees for myrepo
 
-  BRANCH          PATH                         WINDOW   STATUS       AGE
-  feature/auth    .../myrepo.worktrees/auth    open     +2           2h
-  bugfix/login    .../myrepo.worktrees/login   stale    dirty -3     1d
-  feature/api     .../myrepo.worktrees/api     closed   clean        3d
-  feature/sync    .../myrepo.worktrees/sync    open     +1 -5        4h
+  BRANCH          PATH                         WINDOW   STATUS              AGE
+  feature/auth    .../myrepo.worktrees/auth    open     ↑2                  2h
+  bugfix/login    .../myrepo.worktrees/login   stale    dirty ↓3            1d
+  feature/api     .../myrepo.worktrees/api     closed   clean               3d
+  feature/sync    .../myrepo.worktrees/sync    open     ↑1 ↓5              4h
+  feature/rebase  .../myrepo.worktrees/rebase  open     rebasing dirty ↓2   1h
 ```
 
 Output columns:
@@ -135,13 +136,15 @@ Output columns:
 - **BRANCH** — git branch name
 - **PATH** — worktree directory path
 - **WINDOW** — `open` (green), `stale` (yellow, window closed but state exists), or `closed` (red)
-- **STATUS** — git working state, combining dirty and ahead/behind indicators:
+- **STATUS** — git working state, combining operation, dirty, and ahead/behind indicators:
   - `clean` (green) — no uncommitted changes, in sync with base branch
   - `dirty` (red) — has uncommitted changes
-  - `+N` (yellow) — N commits ahead of base branch
-  - `-N` (yellow) — N commits behind base branch (needs `wt sync`)
-  - `+N -M` (yellow) — N ahead and M behind (diverged)
-  - `dirty +N` / `dirty -M` / `dirty +N -M` (red) — uncommitted changes with ahead/behind
+  - `rebasing` (red) — a rebase is in progress (needs conflict resolution)
+  - `merging` (red) — a merge is in progress (needs conflict resolution)
+  - `↑N` (yellow) — N commits ahead of base branch
+  - `↓N` (yellow) — N commits behind base branch (needs `wt sync`)
+  - `↑N ↓M` (yellow) — N ahead and M behind (diverged)
+  - Combined statuses like `rebasing dirty ↑N ↓M` (red) — multiple indicators shown together
 - **AGE** — time since creation
 
 Automatically prunes stale state entries for worktrees that no longer exist on disk.
