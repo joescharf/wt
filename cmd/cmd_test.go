@@ -528,7 +528,7 @@ func TestOpen_NewWindow(t *testing.T) {
 
 func TestOpen_NotFoundPromptAccepted(t *testing.T) {
 	env := setupTest(t)
-	promptFunc = func(msg string) bool { return true }
+	promptDefaultYes = func(msg string) bool { return true }
 
 	wtDir := filepath.Join(env.dir, "repo.worktrees")
 	wtPath := filepath.Join(wtDir, "feat-mkdocs")
@@ -555,7 +555,7 @@ func TestOpen_NotFoundPromptAccepted(t *testing.T) {
 
 func TestOpen_NotFoundPromptDenied(t *testing.T) {
 	env := setupTest(t)
-	promptFunc = func(msg string) bool { return false }
+	promptDefaultYes = func(msg string) bool { return false }
 
 	wtDir := filepath.Join(env.dir, "repo.worktrees")
 	wtPath := filepath.Join(wtDir, "feat-mkdocs")
@@ -564,8 +564,7 @@ func TestOpen_NotFoundPromptDenied(t *testing.T) {
 	env.git.EXPECT().ResolveWorktree("feat-mkdocs").Return(wtPath, nil)
 
 	err := openRun("feat-mkdocs")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "worktree not found")
+	require.NoError(t, err)
 	assert.Contains(t, env.err.String(), "not found")
 }
 

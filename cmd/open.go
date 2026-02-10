@@ -46,10 +46,10 @@ func openRun(branch string) error {
 
 	if !isDirectory(wtPath) {
 		output.Warning("Worktree not found: %s", wtPath)
-		if promptFunc(fmt.Sprintf("Create worktree '%s'?", branch)) {
+		if promptDefaultYes(fmt.Sprintf("Create worktree '%s'?", branch)) {
 			return createRun(branch)
 		}
-		return fmt.Errorf("worktree not found: %s", wtPath)
+		return nil
 	}
 
 	// Check if window already exists
