@@ -4,6 +4,10 @@ Git Worktree Manager with iTerm2 Integration.
 
 Creates git worktrees with dedicated iTerm2 windows — Claude Code on top, shell on bottom — and tracks them across repos. Full lifecycle management: `create` → work → `sync` → `merge` → auto-cleanup.
 
+<p align="center">
+  <img src="docs/docs/assets/screenshots/wt-workflow.gif" alt="wt workflow demo" width="800">
+</p>
+
 ## Quick Start
 
 ```bash
