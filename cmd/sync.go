@@ -133,6 +133,19 @@ func syncRun(branch string) error {
 		output.VerboseLog("Could not check behind status: %v", err)
 	}
 
+	// Also check local base branch — catches unpushed commits on base
+	if mergeSource != baseBranch {
+		localBehind, err := gitClient.CommitsBehind(wtPath, baseBranch)
+		if err != nil {
+			output.VerboseLog("Could not check local behind status: %v", err)
+		}
+		if localBehind > behind {
+			behind = localBehind
+			mergeSource = baseBranch
+			ahead, _ = gitClient.CommitsAhead(wtPath, mergeSource)
+		}
+	}
+
 	output.Info("Status of '%s' vs '%s': %s", ui.Cyan(branchName), ui.Cyan(baseBranch), formatSyncStatus(ahead, behind))
 
 	if behind == 0 {
@@ -327,6 +340,17 @@ func syncAllRun() error {
 		ahead, _ := gitClient.CommitsAhead(entry.path, mergeSource)
 		behind, _ := gitClient.CommitsBehind(entry.path, mergeSource)
 
+		// Also check local base branch — catches unpushed commits on base
+		effectiveMergeSource := mergeSource
+		if mergeSource != baseBranch {
+			localBehind, _ := gitClient.CommitsBehind(entry.path, baseBranch)
+			if localBehind > behind {
+				behind = localBehind
+				effectiveMergeSource = baseBranch
+				ahead, _ = gitClient.CommitsAhead(entry.path, baseBranch)
+			}
+		}
+
 		if behind == 0 {
 			output.Info("'%s' is already in sync (%s)", entry.branch, formatSyncStatus(ahead, behind))
 			upToDate++
@@ -337,12 +361,12 @@ func syncAllRun() error {
 			output.Info("'%s' %s — rebasing onto %s", entry.branch, formatSyncStatus(ahead, behind), baseBranch)
 
 			if dryRun {
-				output.DryRunMsg("Would rebase '%s' onto '%s'", entry.branch, mergeSource)
+				output.DryRunMsg("Would rebase '%s' onto '%s'", entry.branch, effectiveMergeSource)
 				synced++
 				continue
 			}
 
-			if err := gitClient.Rebase(entry.path, mergeSource); err != nil {
+			if err := gitClient.Rebase(entry.path, effectiveMergeSource); err != nil {
 				output.Error("Conflict rebasing '%s' — resolve and run 'wt sync %s'", dirname, dirname)
 				conflicts++
 				continue
@@ -353,12 +377,12 @@ func syncAllRun() error {
 			output.Info("'%s' %s — merging %d commit(s)", entry.branch, formatSyncStatus(ahead, behind), behind)
 
 			if dryRun {
-				output.DryRunMsg("Would merge '%s' into '%s'", mergeSource, entry.branch)
+				output.DryRunMsg("Would merge '%s' into '%s'", effectiveMergeSource, entry.branch)
 				synced++
 				continue
 			}
 
-			if err := gitClient.Merge(entry.path, mergeSource); err != nil {
+			if err := gitClient.Merge(entry.path, effectiveMergeSource); err != nil {
 				output.Error("Conflict syncing '%s' — resolve and run 'wt sync %s'", dirname, dirname)
 				conflicts++
 				continue

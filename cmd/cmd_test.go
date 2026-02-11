@@ -1558,6 +1558,7 @@ func TestSync_Success_WithRemote(t *testing.T) {
 	env.git.EXPECT().Fetch(repoRoot).Return(nil)
 	env.git.EXPECT().CommitsAhead(wtPath, "origin/main").Return(2, nil)
 	env.git.EXPECT().CommitsBehind(wtPath, "origin/main").Return(3, nil)
+	env.git.EXPECT().CommitsBehind(wtPath, "main").Return(0, nil) // local main not ahead
 	env.git.EXPECT().Merge(wtPath, "origin/main").Return(nil)
 
 	err := syncRun("feature/auth")
@@ -1734,6 +1735,7 @@ func TestSync_DryRun(t *testing.T) {
 	env.git.EXPECT().RepoRoot().Return(env.dir, nil)
 	env.git.EXPECT().CommitsAhead(wtPath, "origin/main").Return(0, nil)
 	env.git.EXPECT().CommitsBehind(wtPath, "origin/main").Return(3, nil)
+	env.git.EXPECT().CommitsBehind(wtPath, "main").Return(0, nil) // local main not ahead
 
 	err := syncRun("feature/auth")
 	require.NoError(t, err)
@@ -1766,12 +1768,14 @@ func TestSync_All_Success(t *testing.T) {
 	env.git.EXPECT().IsRebaseInProgress(wtPath1).Return(false, nil)
 	env.git.EXPECT().CommitsAhead(wtPath1, "origin/main").Return(1, nil)
 	env.git.EXPECT().CommitsBehind(wtPath1, "origin/main").Return(3, nil)
+	env.git.EXPECT().CommitsBehind(wtPath1, "main").Return(0, nil) // local main not ahead
 	env.git.EXPECT().Merge(wtPath1, "origin/main").Return(nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath2).Return(false, nil)
 	env.git.EXPECT().IsMergeInProgress(wtPath2).Return(false, nil)
 	env.git.EXPECT().IsRebaseInProgress(wtPath2).Return(false, nil)
 	env.git.EXPECT().CommitsAhead(wtPath2, "origin/main").Return(0, nil)
 	env.git.EXPECT().CommitsBehind(wtPath2, "origin/main").Return(1, nil)
+	env.git.EXPECT().CommitsBehind(wtPath2, "main").Return(0, nil) // local main not ahead
 	env.git.EXPECT().Merge(wtPath2, "origin/main").Return(nil)
 
 	err := syncAllRun()
@@ -1853,6 +1857,7 @@ func TestSync_Rebase_Success_WithRemote(t *testing.T) {
 	env.git.EXPECT().Fetch(repoRoot).Return(nil)
 	env.git.EXPECT().CommitsAhead(wtPath, "origin/main").Return(2, nil)
 	env.git.EXPECT().CommitsBehind(wtPath, "origin/main").Return(3, nil)
+	env.git.EXPECT().CommitsBehind(wtPath, "main").Return(0, nil) // local main not ahead
 	env.git.EXPECT().Rebase(wtPath, "origin/main").Return(nil)
 
 	err := syncRun("feature/auth")
@@ -2082,6 +2087,72 @@ func TestSync_All_SkipsRebaseInProgress(t *testing.T) {
 	errOut := env.err.String()
 	assert.Contains(t, out+errOut, "rebase in progress")
 	assert.Contains(t, out, "1 skipped")
+}
+
+func TestSync_WithRemote_LocalMainAhead(t *testing.T) {
+	env := setupTest(t)
+	repoRoot := filepath.Join(env.dir, "repo")
+	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
+	os.MkdirAll(wtPath, 0755)
+
+	env.state.SetWorktree(wtPath, &state.WorktreeState{
+		Repo:   "myrepo",
+		Branch: "feature/auth",
+	})
+
+	env.git.EXPECT().ResolveWorktree("feature/auth").Return(wtPath, nil)
+	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
+	env.git.EXPECT().IsMergeInProgress(wtPath).Return(false, nil)
+	env.git.EXPECT().IsRebaseInProgress(wtPath).Return(false, nil)
+	env.git.EXPECT().HasRemote().Return(true, nil)
+	env.git.EXPECT().RepoRoot().Return(repoRoot, nil)
+	env.git.EXPECT().Fetch(repoRoot).Return(nil)
+	// Remote is in sync but local main has unpushed commits
+	env.git.EXPECT().CommitsAhead(wtPath, "origin/main").Return(0, nil)
+	env.git.EXPECT().CommitsBehind(wtPath, "origin/main").Return(0, nil)
+	env.git.EXPECT().CommitsBehind(wtPath, "main").Return(2, nil) // local main has 2 unpushed commits
+	env.git.EXPECT().CommitsAhead(wtPath, "main").Return(0, nil)  // re-check ahead against local
+	env.git.EXPECT().Merge(wtPath, "main").Return(nil)            // merges from local main
+
+	err := syncRun("feature/auth")
+	require.NoError(t, err)
+
+	out := env.out.String()
+	assert.Contains(t, out, "↓2")
+	assert.Contains(t, out, "Merging 2 commit(s)")
+	assert.Contains(t, out, "Synced")
+}
+
+func TestSync_All_WithRemote_LocalMainAhead(t *testing.T) {
+	env := setupTest(t)
+	syncAll = true
+
+	wtPath1 := filepath.Join(env.dir, "repo.worktrees", "auth")
+	os.MkdirAll(wtPath1, 0755)
+
+	env.git.EXPECT().WorktreeList().Return([]git.WorktreeInfo{
+		{Path: env.dir, Branch: "main"},
+		{Path: wtPath1, Branch: "feature/auth"},
+	}, nil)
+	env.git.EXPECT().RepoRoot().Return(env.dir, nil)
+	env.git.EXPECT().HasRemote().Return(true, nil)
+	env.git.EXPECT().Fetch(env.dir).Return(nil)
+	env.git.EXPECT().IsWorktreeDirty(wtPath1).Return(false, nil)
+	env.git.EXPECT().IsMergeInProgress(wtPath1).Return(false, nil)
+	env.git.EXPECT().IsRebaseInProgress(wtPath1).Return(false, nil)
+	// Remote is in sync but local main has unpushed commits
+	env.git.EXPECT().CommitsAhead(wtPath1, "origin/main").Return(0, nil)
+	env.git.EXPECT().CommitsBehind(wtPath1, "origin/main").Return(0, nil)
+	env.git.EXPECT().CommitsBehind(wtPath1, "main").Return(3, nil) // local main has 3 unpushed commits
+	env.git.EXPECT().CommitsAhead(wtPath1, "main").Return(0, nil)  // re-check ahead against local
+	env.git.EXPECT().Merge(wtPath1, "main").Return(nil)            // merges from local main
+
+	err := syncAllRun()
+	require.NoError(t, err)
+
+	out := env.out.String()
+	assert.Contains(t, out, "1 synced")
+	assert.Contains(t, out, "Synced")
 }
 
 // ─── Merge Rebase Tests ──────────────────────────────────────────────────────

@@ -235,9 +235,10 @@ wt sy feature/auth                     # alias
 1. Safety checks (dirty worktree → error, use `--force` to skip)
 2. If a merge or rebase is already in progress, picks up where it left off
 3. Fetches latest changes (if remote exists)
-4. Reports status (`↑2 ↓3` means 2 ahead, 3 behind)
-5. If already in sync (0 behind), exits early
-6. Merges base branch into feature branch (default) or rebases feature onto base (`--rebase`)
+4. Checks behind count against both remote (`origin/main`) and local base branch, using whichever is further ahead — catches both upstream changes and local commits on `main` not yet pushed
+5. Reports status (`↑2 ↓3` means 2 ahead, 3 behind)
+6. If already in sync (0 behind), exits early
+7. Merges base branch into feature branch (default) or rebases feature onto base (`--rebase`)
 
 **Sync all** (`--all`) fetches once, then syncs each worktree. Skips dirty worktrees and those with in-progress merges/rebases, reports per-worktree status.
 
