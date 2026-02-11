@@ -23,6 +23,15 @@ Sleep 300ms
 Enter
 Sleep 3s
 
+# Step 1: Create a worktree
+Type "# Step 1.5: Create or open a worktree for an existing branch"
+Enter
+Sleep 500ms
+Type "wt feat-create-screenshots"
+Sleep 300ms
+Enter
+Sleep 3s
+
 # Step 2: List worktrees
 Type "# Step 2: See all active worktrees"
 Enter
@@ -36,7 +45,7 @@ Sleep 3s
 Type "# Step 3: Sync with latest main"
 Enter
 Sleep 500ms
-Type "wt sync --all --dry-run"
+Type "wt sync --all"
 Sleep 300ms
 Enter
 Sleep 3s
@@ -45,7 +54,7 @@ Sleep 3s
 Type "# Step 4: Merge back to main when done"
 Enter
 Sleep 500ms
-Type "wt merge feat-create-screenshots --dry-run"
+Type "wt merge feat-create-screenshots"
 Sleep 300ms
 Enter
 Sleep 4s
