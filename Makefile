@@ -6,6 +6,9 @@ COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 LDFLAGS := -ldflags "-X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(BUILD_DATE)"
 
+# Homebrew tap token for goreleaser (local releases)
+export HOMEBREW_TAP_TOKEN ?= $(shell cat ~/.config/goreleaser/github_token 2>/dev/null)
+
 # Conditionally include docs targets if directory exists
 ALL_TARGETS := build
 $(if $(wildcard docs/mkdocs.yml),$(eval ALL_TARGETS += docs-build))
