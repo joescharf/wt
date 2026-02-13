@@ -83,4 +83,5 @@ For unsigned CI fallback releases, use the GitHub Actions workflow dispatch with
 - Apple Developer ID Application certificate in keychain
 - Apple Developer ID Installer certificate in keychain
 - Keychain profile `SCHARFNADO_LLC` (for notarytool)
-- GoReleaser GitHub token at `~/.config/goreleaser/github_token` (also used as `HOMEBREW_TAP_TOKEN` for Homebrew formula push)
+- GoReleaser GitHub token at `~/.config/goreleaser/github_token`
+- Homebrew tap token at `~/.config/goreleaser/homebrew_tap_token` (for pushing formula to `joescharf/homebrew-tap`)
