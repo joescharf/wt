@@ -6,9 +6,6 @@ COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 LDFLAGS := -ldflags "-X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(BUILD_DATE)"
 
-# Homebrew tap token for goreleaser (local releases)
-export HOMEBREW_TAP_TOKEN ?= $(shell cat ~/.config/goreleaser/homebrew_tap_token 2>/dev/null)
-
 # Conditionally include docs targets if directory exists
 ALL_TARGETS := build
 $(if $(wildcard docs/mkdocs.yml),$(eval ALL_TARGETS += docs-build))
@@ -53,13 +50,10 @@ fmt: ## Run gofmt
 	gofmt -s -w .
 
 ##@ Release
-.PHONY: release release-local release-snapshot
+.PHONY: release release-snapshot
 
 release: ## Create a release with goreleaser
-	goreleaser release --clean
-
-release-local: ## Create a signed local release (macOS code-signing)
-	goreleaser release --clean
+	HOMEBREW_TAP_TOKEN=$$(cat ~/.config/goreleaser/homebrew_tap_token) goreleaser release --clean
 
 release-snapshot: ## Create a snapshot release (no publish)
 	goreleaser release --snapshot --clean --skip homebrew

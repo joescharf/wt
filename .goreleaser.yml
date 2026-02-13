@@ -29,12 +29,26 @@ universal_binaries:
       post: uv run /Users/joescharf/.local/bin/pycodesign.py wt_pycodesign.ini -O {{ .Version }}
 
 archives:
-  - format: tar.gz
+  - id: wt-macos-archive
+    formats:
+      - zip
     name_template: >-
       {{ .ProjectName }}_
       {{- .Os }}_
       {{- if eq .Arch "all" }}universal
       {{- else }}{{ .Arch }}{{ end }}
+
+signs:
+  - id: notarize-macos-zip
+    cmd: sh
+    args:
+      - -c
+      - 'xcrun notarytool submit "${artifact}" --keychain-profile SCHARFNADO_LLC --wait && touch "${signature}"'
+    artifacts: archive
+    ids:
+      - wt-macos-archive
+    signature: "${artifact}.notarized"
+    output: true
 
 checksum:
   name_template: "checksums.txt"
@@ -53,17 +67,22 @@ release:
   github:
     owner: joescharf
     name: wt
+  ids:
+    - wt-macos-archive
   extra_files:
     - glob: ./dist/wt_macos_universal.pkg
-  draft: true
-  replace_existing_draft: true
+  draft: false
   prerelease: auto
 
-brews:
-  - repository:
+homebrew_casks:
+  - name: wt
+    ids:
+      - wt-macos-archive
+    repository:
       owner: joescharf
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    directory: Casks
+    skip_upload: auto
     homepage: "https://github.com/joescharf/wt"
     description: "Git worktree manager with iTerm2 integration"
-    license: "MIT"
