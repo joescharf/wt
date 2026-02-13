@@ -42,12 +42,14 @@ wt prune
 ## Installation
 
 ```bash
-# Via Homebrew tap
+# Via Homebrew tap (recommended — binary is code-signed and notarized)
 brew install joescharf/tap/wt
 
 # Or build from source
 go install github.com/joescharf/wt@latest
 ```
+
+Homebrew installs are signed with a Developer ID certificate and notarized by Apple, so macOS Gatekeeper will not show security warnings.
 
 ## Shell Completions
 

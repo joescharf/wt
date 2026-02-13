@@ -1,5 +1,8 @@
 version: 2
 
+env_files:
+  github_token: ~/.config/goreleaser/github_token
+
 before:
   hooks:
     - go mod tidy
@@ -22,6 +25,8 @@ builds:
 
 universal_binaries:
   - replace: true
+    hooks:
+      post: uv run /Users/joescharf/.local/bin/pycodesign.py wt_pycodesign.ini -O {{ .Version }}
 
 archives:
   - format: tar.gz
@@ -43,6 +48,16 @@ changelog:
     exclude:
       - "^docs:"
       - "^test:"
+
+release:
+  github:
+    owner: joescharf
+    name: wt
+  extra_files:
+    - glob: ./dist/wt_macos_universal.pkg
+  draft: true
+  replace_existing_draft: true
+  prerelease: auto
 
 brews:
   - repository:

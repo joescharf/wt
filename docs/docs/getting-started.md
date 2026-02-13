@@ -17,11 +17,16 @@
     brew install joescharf/tap/wt
     ```
 
+    The Homebrew formula installs a universal binary that is code-signed and notarized by Apple, so macOS Gatekeeper will not show security warnings.
+
 === "From source"
 
     ```bash
     go install github.com/joescharf/wt@latest
     ```
+
+    !!! note
+        Building from source produces an unsigned binary. macOS may show a Gatekeeper warning on first run. You can allow it in **System Settings > Privacy & Security**.
 
 Verify the installation:
 
