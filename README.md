@@ -327,6 +327,30 @@ wt completion zsh
 wt completion fish
 ```
 
+### `mcp`
+
+MCP (Model Context Protocol) server for Claude Code integration. Exposes worktree management as MCP tools that Claude Code can call directly.
+
+```bash
+wt mcp               # Start MCP stdio server
+wt mcp serve          # Explicit serve (same as bare mcp)
+wt mcp install        # Install wt as MCP server in ~/.claude.json
+wt mcp status         # Check installation status
+```
+
+**Available MCP tools:**
+
+| Tool | Description |
+|------|-------------|
+| `wt_list` | List worktrees with window/git status |
+| `wt_create` | Create worktree + branch + iTerm2 window |
+| `wt_open` | Open or focus iTerm2 window for existing worktree |
+| `wt_delete` | Close window + remove worktree (with safety checks) |
+| `wt_sync` | Sync worktree with base branch (merge or rebase) |
+| `wt_merge` | Merge branch into base or push for PR |
+
+After installing, restart Claude Code. The tools will appear as `wt_*` and Claude can manage worktrees programmatically.
+
 ### `version`
 
 Prints version, commit hash, and build date.
