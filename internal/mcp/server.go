@@ -11,9 +11,9 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 
-	"github.com/joescharf/wt/internal/git"
+	"github.com/joescharf/wt/pkg/gitops"
 	"github.com/joescharf/wt/internal/iterm"
-	"github.com/joescharf/wt/internal/state"
+	state "github.com/joescharf/wt/pkg/wtstate"
 )
 
 // Server wraps the wt dependencies and exposes them as MCP tools.
@@ -178,7 +178,7 @@ func (s *Server) handleCreate(ctx context.Context, request mcp.CallToolRequest) 
 		return mcp.NewToolResultError(fmt.Sprintf("failed to get worktrees dir: %v", err)), nil
 	}
 
-	dirname := git.BranchToDirname(branch)
+	dirname := gitops.BranchToDirname(branch)
 	wtPath := filepath.Join(wtDir, dirname)
 
 	// Create worktrees directory if needed
@@ -612,7 +612,7 @@ func (s *Server) resolveWorktreePath(repoPath, branch string) (string, error) {
 	}
 
 	// Try matching by dirname (last segment of branch)
-	dirname := git.BranchToDirname(branch)
+	dirname := gitops.BranchToDirname(branch)
 	wtDir, err := s.git.WorktreesDir(repoPath)
 	if err != nil {
 		return "", err

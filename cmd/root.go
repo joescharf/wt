@@ -9,15 +9,15 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/joescharf/wt/internal/claude"
-	"github.com/joescharf/wt/internal/git"
+	"github.com/joescharf/wt/pkg/gitops"
 	"github.com/joescharf/wt/internal/iterm"
-	"github.com/joescharf/wt/internal/state"
+	state "github.com/joescharf/wt/pkg/wtstate"
 	"github.com/joescharf/wt/internal/ui"
 )
 
 // Package-level shared dependencies, initialized in cobra.OnInitialize.
 var (
-	gitClient   git.Client
+	gitClient   gitops.Client
 	itermClient iterm.Client
 	stateMgr    *state.Manager
 	claudeTrust *claude.TrustManager
@@ -101,7 +101,7 @@ func initDeps() {
 	statePath := filepath.Join(stateDir, "state.json")
 	stateMgr = state.NewManager(statePath)
 
-	gitClient = git.NewClient()
+	gitClient = gitops.NewClient()
 	itermClient = iterm.NewClient()
 
 	if claudePath, err := claude.DefaultPath(); err == nil {

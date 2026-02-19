@@ -13,11 +13,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/joescharf/wt/internal/claude"
-	"github.com/joescharf/wt/internal/git"
-	gitmocks "github.com/joescharf/wt/internal/git/mocks"
+	"github.com/joescharf/wt/pkg/gitops"
+	gitmocks "github.com/joescharf/wt/pkg/gitops/mocks"
 	"github.com/joescharf/wt/internal/iterm"
 	itermmocks "github.com/joescharf/wt/internal/iterm/mocks"
-	"github.com/joescharf/wt/internal/state"
+	state "github.com/joescharf/wt/pkg/wtstate"
 	"github.com/joescharf/wt/internal/ui"
 )
 
@@ -191,7 +191,7 @@ func TestList_WithWorktrees(t *testing.T) {
 
 	env.git.EXPECT().RepoName().Return("myrepo", nil)
 	env.git.EXPECT().RepoRoot().Return(env.dir, nil)
-	env.git.EXPECT().WorktreeList().Return([]git.WorktreeInfo{
+	env.git.EXPECT().WorktreeList().Return([]gitops.WorktreeInfo{
 		{Path: env.dir, Branch: "main", HEAD: "abc123"},
 		{Path: wtPath, Branch: "feature/auth", HEAD: "def456"},
 	}, nil)
@@ -231,7 +231,7 @@ func TestList_StatusDirty(t *testing.T) {
 
 	env.git.EXPECT().RepoName().Return("myrepo", nil)
 	env.git.EXPECT().RepoRoot().Return(env.dir, nil)
-	env.git.EXPECT().WorktreeList().Return([]git.WorktreeInfo{
+	env.git.EXPECT().WorktreeList().Return([]gitops.WorktreeInfo{
 		{Path: env.dir, Branch: "main", HEAD: "abc123"},
 		{Path: wtPath, Branch: "feature/auth", HEAD: "def456"},
 	}, nil)
@@ -253,7 +253,7 @@ func TestList_StatusDirtyAndBehind(t *testing.T) {
 
 	env.git.EXPECT().RepoName().Return("myrepo", nil)
 	env.git.EXPECT().RepoRoot().Return(env.dir, nil)
-	env.git.EXPECT().WorktreeList().Return([]git.WorktreeInfo{
+	env.git.EXPECT().WorktreeList().Return([]gitops.WorktreeInfo{
 		{Path: env.dir, Branch: "main", HEAD: "abc123"},
 		{Path: wtPath, Branch: "feature/auth", HEAD: "def456"},
 	}, nil)
@@ -277,7 +277,7 @@ func TestList_StatusClean(t *testing.T) {
 
 	env.git.EXPECT().RepoName().Return("myrepo", nil)
 	env.git.EXPECT().RepoRoot().Return(env.dir, nil)
-	env.git.EXPECT().WorktreeList().Return([]git.WorktreeInfo{
+	env.git.EXPECT().WorktreeList().Return([]gitops.WorktreeInfo{
 		{Path: env.dir, Branch: "main", HEAD: "abc123"},
 		{Path: wtPath, Branch: "feature/auth", HEAD: "def456"},
 	}, nil)
@@ -299,7 +299,7 @@ func TestList_StatusBehind(t *testing.T) {
 
 	env.git.EXPECT().RepoName().Return("myrepo", nil)
 	env.git.EXPECT().RepoRoot().Return(env.dir, nil)
-	env.git.EXPECT().WorktreeList().Return([]git.WorktreeInfo{
+	env.git.EXPECT().WorktreeList().Return([]gitops.WorktreeInfo{
 		{Path: env.dir, Branch: "main", HEAD: "abc123"},
 		{Path: wtPath, Branch: "feature/auth", HEAD: "def456"},
 	}, nil)
@@ -321,7 +321,7 @@ func TestList_StatusAheadAndBehind(t *testing.T) {
 
 	env.git.EXPECT().RepoName().Return("myrepo", nil)
 	env.git.EXPECT().RepoRoot().Return(env.dir, nil)
-	env.git.EXPECT().WorktreeList().Return([]git.WorktreeInfo{
+	env.git.EXPECT().WorktreeList().Return([]gitops.WorktreeInfo{
 		{Path: env.dir, Branch: "main", HEAD: "abc123"},
 		{Path: wtPath, Branch: "feature/auth", HEAD: "def456"},
 	}, nil)
@@ -349,7 +349,7 @@ func TestList_PrunesStaleState(t *testing.T) {
 
 	env.git.EXPECT().RepoName().Return("myrepo", nil)
 	env.git.EXPECT().RepoRoot().Return(env.dir, nil)
-	env.git.EXPECT().WorktreeList().Return([]git.WorktreeInfo{
+	env.git.EXPECT().WorktreeList().Return([]gitops.WorktreeInfo{
 		{Path: env.dir, Branch: "main", HEAD: "abc123"},
 	}, nil)
 
@@ -370,7 +370,7 @@ func TestList_StatusRebasing(t *testing.T) {
 
 	env.git.EXPECT().RepoName().Return("myrepo", nil)
 	env.git.EXPECT().RepoRoot().Return(env.dir, nil)
-	env.git.EXPECT().WorktreeList().Return([]git.WorktreeInfo{
+	env.git.EXPECT().WorktreeList().Return([]gitops.WorktreeInfo{
 		{Path: env.dir, Branch: "main", HEAD: "abc123"},
 		{Path: wtPath, Branch: "feature/auth", HEAD: "def456"},
 	}, nil)
@@ -396,7 +396,7 @@ func TestList_StatusMerging(t *testing.T) {
 
 	env.git.EXPECT().RepoName().Return("myrepo", nil)
 	env.git.EXPECT().RepoRoot().Return(env.dir, nil)
-	env.git.EXPECT().WorktreeList().Return([]git.WorktreeInfo{
+	env.git.EXPECT().WorktreeList().Return([]gitops.WorktreeInfo{
 		{Path: env.dir, Branch: "main", HEAD: "abc123"},
 		{Path: wtPath, Branch: "feature/auth", HEAD: "def456"},
 	}, nil)
@@ -421,7 +421,7 @@ func TestList_StatusRebasingOnly(t *testing.T) {
 
 	env.git.EXPECT().RepoName().Return("myrepo", nil)
 	env.git.EXPECT().RepoRoot().Return(env.dir, nil)
-	env.git.EXPECT().WorktreeList().Return([]git.WorktreeInfo{
+	env.git.EXPECT().WorktreeList().Return([]gitops.WorktreeInfo{
 		{Path: env.dir, Branch: "main", HEAD: "abc123"},
 		{Path: wtPath, Branch: "feature/auth", HEAD: "def456"},
 	}, nil)
@@ -717,7 +717,7 @@ func TestDelete_All(t *testing.T) {
 	os.MkdirAll(wtPath2, 0755)
 
 	env.git.EXPECT().RepoRoot().Return(env.dir, nil)
-	env.git.EXPECT().WorktreeList().Return([]git.WorktreeInfo{
+	env.git.EXPECT().WorktreeList().Return([]gitops.WorktreeInfo{
 		{Path: env.dir, Branch: "main"},
 		{Path: wtPath1, Branch: "feature/auth"},
 		{Path: wtPath2, Branch: "feature/api"},
@@ -738,7 +738,7 @@ func TestDelete_All_NoneFound(t *testing.T) {
 	deleteAll = true
 
 	env.git.EXPECT().RepoRoot().Return(env.dir, nil)
-	env.git.EXPECT().WorktreeList().Return([]git.WorktreeInfo{
+	env.git.EXPECT().WorktreeList().Return([]gitops.WorktreeInfo{
 		{Path: env.dir, Branch: "main"},
 	}, nil)
 
@@ -1755,7 +1755,7 @@ func TestSync_All_Success(t *testing.T) {
 	os.MkdirAll(wtPath1, 0755)
 	os.MkdirAll(wtPath2, 0755)
 
-	env.git.EXPECT().WorktreeList().Return([]git.WorktreeInfo{
+	env.git.EXPECT().WorktreeList().Return([]gitops.WorktreeInfo{
 		{Path: env.dir, Branch: "main"},
 		{Path: wtPath1, Branch: "feature/auth"},
 		{Path: wtPath2, Branch: "feature/api"},
@@ -1795,7 +1795,7 @@ func TestSync_All_SkipsDirty(t *testing.T) {
 	os.MkdirAll(wtPath1, 0755)
 	os.MkdirAll(wtPath2, 0755)
 
-	env.git.EXPECT().WorktreeList().Return([]git.WorktreeInfo{
+	env.git.EXPECT().WorktreeList().Return([]gitops.WorktreeInfo{
 		{Path: env.dir, Branch: "main"},
 		{Path: wtPath1, Branch: "feature/auth"},
 		{Path: wtPath2, Branch: "feature/api"},
@@ -1824,7 +1824,7 @@ func TestSync_All_NoneFound(t *testing.T) {
 	env := setupTest(t)
 	syncAll = true
 
-	env.git.EXPECT().WorktreeList().Return([]git.WorktreeInfo{
+	env.git.EXPECT().WorktreeList().Return([]gitops.WorktreeInfo{
 		{Path: env.dir, Branch: "main"},
 	}, nil)
 	env.git.EXPECT().RepoRoot().Return(env.dir, nil)
@@ -1975,7 +1975,7 @@ func TestSync_Rebase_All(t *testing.T) {
 	os.MkdirAll(wtPath1, 0755)
 	os.MkdirAll(wtPath2, 0755)
 
-	env.git.EXPECT().WorktreeList().Return([]git.WorktreeInfo{
+	env.git.EXPECT().WorktreeList().Return([]gitops.WorktreeInfo{
 		{Path: env.dir, Branch: "main"},
 		{Path: wtPath1, Branch: "feature/auth"},
 		{Path: wtPath2, Branch: "feature/api"},
@@ -2064,7 +2064,7 @@ func TestSync_All_SkipsRebaseInProgress(t *testing.T) {
 	os.MkdirAll(wtPath1, 0755)
 	os.MkdirAll(wtPath2, 0755)
 
-	env.git.EXPECT().WorktreeList().Return([]git.WorktreeInfo{
+	env.git.EXPECT().WorktreeList().Return([]gitops.WorktreeInfo{
 		{Path: env.dir, Branch: "main"},
 		{Path: wtPath1, Branch: "feature/auth"},
 		{Path: wtPath2, Branch: "feature/api"},
@@ -2130,7 +2130,7 @@ func TestSync_All_WithRemote_LocalMainAhead(t *testing.T) {
 	wtPath1 := filepath.Join(env.dir, "repo.worktrees", "auth")
 	os.MkdirAll(wtPath1, 0755)
 
-	env.git.EXPECT().WorktreeList().Return([]git.WorktreeInfo{
+	env.git.EXPECT().WorktreeList().Return([]gitops.WorktreeInfo{
 		{Path: env.dir, Branch: "main"},
 		{Path: wtPath1, Branch: "feature/auth"},
 	}, nil)

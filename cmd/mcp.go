@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	wmcp "github.com/joescharf/wt/internal/mcp"
-	"github.com/joescharf/wt/internal/state"
+	state "github.com/joescharf/wt/pkg/wtstate"
 )
 
 var mcpCmd = &cobra.Command{

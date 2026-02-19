@@ -13,9 +13,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/joescharf/wt/internal/git"
+	"github.com/joescharf/wt/pkg/gitops"
 	"github.com/joescharf/wt/internal/iterm"
-	"github.com/joescharf/wt/internal/state"
+	state "github.com/joescharf/wt/pkg/wtstate"
 )
 
 // ---------------------------------------------------------------------------
@@ -27,7 +27,7 @@ type mockGitClient struct {
 	repoRoot     string
 	repoName     string
 	worktreesDir string
-	worktrees    []git.WorktreeInfo
+	worktrees    []gitops.WorktreeInfo
 	branches     map[string]bool
 	currentBranch string
 	dirty        bool
@@ -112,7 +112,7 @@ func (m *mockGitClient) WorktreesDir(repoPath string) (string, error) {
 	return repoPath + ".worktrees", nil
 }
 
-func (m *mockGitClient) WorktreeList(repoPath string) ([]git.WorktreeInfo, error) {
+func (m *mockGitClient) WorktreeList(repoPath string) ([]gitops.WorktreeInfo, error) {
 	if m.worktreeListErr != nil {
 		return nil, m.worktreeListErr
 	}
@@ -294,7 +294,7 @@ func newTestServer(t *testing.T) (*Server, *mockGitClient, *mockItermClient, *st
 		worktreesDir:  "/tmp/testrepo.worktrees",
 		currentBranch: "main",
 		branches:      map[string]bool{"main": true},
-		worktrees: []git.WorktreeInfo{
+		worktrees: []gitops.WorktreeInfo{
 			{Path: "/tmp/testrepo", Branch: "main", HEAD: "abc123"},
 		},
 	}
@@ -351,7 +351,7 @@ func TestHandleList_Success(t *testing.T) {
 	srv, gc, _, sm := newTestServer(t)
 	ctx := context.Background()
 
-	gc.worktrees = []git.WorktreeInfo{
+	gc.worktrees = []gitops.WorktreeInfo{
 		{Path: "/tmp/testrepo", Branch: "main", HEAD: "abc123"},
 		{Path: "/tmp/testrepo.worktrees/feature", Branch: "feature/login", HEAD: "def456"},
 	}
@@ -528,7 +528,7 @@ func TestHandleOpen_Success(t *testing.T) {
 	srv, gc, ic, sm := newTestServer(t)
 	ctx := context.Background()
 
-	gc.worktrees = []git.WorktreeInfo{
+	gc.worktrees = []gitops.WorktreeInfo{
 		{Path: "/tmp/testrepo", Branch: "main", HEAD: "abc123"},
 		{Path: "/tmp/testrepo.worktrees/feature", Branch: "feature/login", HEAD: "def456"},
 	}
@@ -571,7 +571,7 @@ func TestHandleOpen_WorktreeNotFound(t *testing.T) {
 	ctx := context.Background()
 
 	// Only main worktree exists
-	gc.worktrees = []git.WorktreeInfo{
+	gc.worktrees = []gitops.WorktreeInfo{
 		{Path: "/tmp/testrepo", Branch: "main", HEAD: "abc123"},
 	}
 
@@ -593,7 +593,7 @@ func TestHandleDelete_Success(t *testing.T) {
 	srv, gc, ic, sm := newTestServer(t)
 	ctx := context.Background()
 
-	gc.worktrees = []git.WorktreeInfo{
+	gc.worktrees = []gitops.WorktreeInfo{
 		{Path: "/tmp/testrepo", Branch: "main", HEAD: "abc123"},
 		{Path: "/tmp/testrepo.worktrees/feature", Branch: "feature/login", HEAD: "def456"},
 	}
@@ -625,7 +625,7 @@ func TestHandleDelete_Force(t *testing.T) {
 	srv, gc, _, _ := newTestServer(t)
 	ctx := context.Background()
 
-	gc.worktrees = []git.WorktreeInfo{
+	gc.worktrees = []gitops.WorktreeInfo{
 		{Path: "/tmp/testrepo", Branch: "main", HEAD: "abc123"},
 		{Path: "/tmp/testrepo.worktrees/feature", Branch: "feature/login", HEAD: "def456"},
 	}
@@ -648,7 +648,7 @@ func TestHandleDelete_DirtyWithoutForce(t *testing.T) {
 	srv, gc, _, _ := newTestServer(t)
 	ctx := context.Background()
 
-	gc.worktrees = []git.WorktreeInfo{
+	gc.worktrees = []gitops.WorktreeInfo{
 		{Path: "/tmp/testrepo", Branch: "main", HEAD: "abc123"},
 		{Path: "/tmp/testrepo.worktrees/feature", Branch: "feature/login", HEAD: "def456"},
 	}
@@ -684,7 +684,7 @@ func TestHandleSync_Success(t *testing.T) {
 	srv, gc, _, _ := newTestServer(t)
 	ctx := context.Background()
 
-	gc.worktrees = []git.WorktreeInfo{
+	gc.worktrees = []gitops.WorktreeInfo{
 		{Path: "/tmp/testrepo", Branch: "main", HEAD: "abc123"},
 		{Path: "/tmp/testrepo.worktrees/feature", Branch: "feature/login", HEAD: "def456"},
 	}
@@ -709,7 +709,7 @@ func TestHandleSync_RebaseStrategy(t *testing.T) {
 	srv, gc, _, _ := newTestServer(t)
 	ctx := context.Background()
 
-	gc.worktrees = []git.WorktreeInfo{
+	gc.worktrees = []gitops.WorktreeInfo{
 		{Path: "/tmp/testrepo", Branch: "main", HEAD: "abc123"},
 		{Path: "/tmp/testrepo.worktrees/feature", Branch: "feature/login", HEAD: "def456"},
 	}
@@ -732,7 +732,7 @@ func TestHandleSync_AlreadyInSync(t *testing.T) {
 	srv, gc, _, _ := newTestServer(t)
 	ctx := context.Background()
 
-	gc.worktrees = []git.WorktreeInfo{
+	gc.worktrees = []gitops.WorktreeInfo{
 		{Path: "/tmp/testrepo", Branch: "main", HEAD: "abc123"},
 		{Path: "/tmp/testrepo.worktrees/feature", Branch: "feature/login", HEAD: "def456"},
 	}
@@ -766,7 +766,7 @@ func TestHandleSync_WithFetch(t *testing.T) {
 	srv, gc, _, _ := newTestServer(t)
 	ctx := context.Background()
 
-	gc.worktrees = []git.WorktreeInfo{
+	gc.worktrees = []gitops.WorktreeInfo{
 		{Path: "/tmp/testrepo", Branch: "main", HEAD: "abc123"},
 		{Path: "/tmp/testrepo.worktrees/feature", Branch: "feature/login", HEAD: "def456"},
 	}
@@ -792,7 +792,7 @@ func TestHandleMerge_LocalSuccess(t *testing.T) {
 	srv, gc, _, _ := newTestServer(t)
 	ctx := context.Background()
 
-	gc.worktrees = []git.WorktreeInfo{
+	gc.worktrees = []gitops.WorktreeInfo{
 		{Path: "/tmp/testrepo", Branch: "main", HEAD: "abc123"},
 		{Path: "/tmp/testrepo.worktrees/feature", Branch: "feature/login", HEAD: "def456"},
 	}
@@ -817,7 +817,7 @@ func TestHandleMerge_RebaseStrategy(t *testing.T) {
 	srv, gc, _, _ := newTestServer(t)
 	ctx := context.Background()
 
-	gc.worktrees = []git.WorktreeInfo{
+	gc.worktrees = []gitops.WorktreeInfo{
 		{Path: "/tmp/testrepo", Branch: "main", HEAD: "abc123"},
 		{Path: "/tmp/testrepo.worktrees/feature", Branch: "feature/login", HEAD: "def456"},
 	}
@@ -841,7 +841,7 @@ func TestHandleMerge_PR(t *testing.T) {
 	srv, gc, _, _ := newTestServer(t)
 	ctx := context.Background()
 
-	gc.worktrees = []git.WorktreeInfo{
+	gc.worktrees = []gitops.WorktreeInfo{
 		{Path: "/tmp/testrepo", Branch: "main", HEAD: "abc123"},
 		{Path: "/tmp/testrepo.worktrees/feature", Branch: "feature/login", HEAD: "def456"},
 	}
@@ -868,7 +868,7 @@ func TestHandleMerge_NothingToMerge(t *testing.T) {
 	srv, gc, _, _ := newTestServer(t)
 	ctx := context.Background()
 
-	gc.worktrees = []git.WorktreeInfo{
+	gc.worktrees = []gitops.WorktreeInfo{
 		{Path: "/tmp/testrepo", Branch: "main", HEAD: "abc123"},
 		{Path: "/tmp/testrepo.worktrees/feature", Branch: "feature/login", HEAD: "abc123"},
 	}
@@ -902,7 +902,7 @@ func TestHandleMerge_WorktreeNotFound(t *testing.T) {
 	srv, gc, _, _ := newTestServer(t)
 	ctx := context.Background()
 
-	gc.worktrees = []git.WorktreeInfo{
+	gc.worktrees = []gitops.WorktreeInfo{
 		{Path: "/tmp/testrepo", Branch: "main", HEAD: "abc123"},
 	}
 

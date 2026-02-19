@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/joescharf/wt/internal/git"
+	"github.com/joescharf/wt/pkg/gitops"
 	"github.com/joescharf/wt/internal/ui"
 )
 
@@ -217,7 +217,7 @@ func deleteAllRun() error {
 	}
 
 	// Filter out main repo
-	var toDelete []git.WorktreeInfo
+	var toDelete []gitops.WorktreeInfo
 	for _, wt := range worktrees {
 		if wt.Path != repoRoot {
 			toDelete = append(toDelete, wt)

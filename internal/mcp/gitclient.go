@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/joescharf/wt/internal/git"
+	"github.com/joescharf/wt/pkg/gitops"
 )
 
 // GitClient defines git operations where every method takes an explicit repoPath.
@@ -16,7 +16,7 @@ type GitClient interface {
 	RepoRoot(repoPath string) (string, error)
 	RepoName(repoPath string) (string, error)
 	WorktreesDir(repoPath string) (string, error)
-	WorktreeList(repoPath string) ([]git.WorktreeInfo, error)
+	WorktreeList(repoPath string) ([]gitops.WorktreeInfo, error)
 	WorktreeAdd(repoPath, wtPath, branch, base string, newBranch bool) error
 	WorktreeRemove(repoPath, wtPath string, force bool) error
 	BranchExists(repoPath, branch string) (bool, error)
@@ -89,7 +89,7 @@ func (c *RealGitClient) WorktreesDir(repoPath string) (string, error) {
 	return root + ".worktrees", nil
 }
 
-func (c *RealGitClient) WorktreeList(repoPath string) ([]git.WorktreeInfo, error) {
+func (c *RealGitClient) WorktreeList(repoPath string) ([]gitops.WorktreeInfo, error) {
 	root, err := c.RepoRoot(repoPath)
 	if err != nil {
 		return nil, err
@@ -100,7 +100,7 @@ func (c *RealGitClient) WorktreeList(repoPath string) ([]git.WorktreeInfo, error
 		return nil, fmt.Errorf("failed to list worktrees: %w", err)
 	}
 
-	return git.ParseWorktreeListPorcelain(string(out)), nil
+	return gitops.ParseWorktreeListPorcelain(string(out)), nil
 }
 
 func (c *RealGitClient) WorktreeAdd(repoPath, wtPath, branch, base string, newBranch bool) error {

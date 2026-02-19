@@ -9,8 +9,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/joescharf/wt/internal/git"
-	"github.com/joescharf/wt/internal/state"
+	"github.com/joescharf/wt/pkg/gitops"
+	state "github.com/joescharf/wt/pkg/wtstate"
 	"github.com/joescharf/wt/internal/ui"
 )
 
@@ -49,7 +49,7 @@ func createRun(branch string) error {
 		return err
 	}
 
-	dirname := git.BranchToDirname(branch)
+	dirname := gitops.BranchToDirname(branch)
 	wtPath := filepath.Join(wtDir, dirname)
 
 	output.Info("Creating worktree for branch '%s' in repo '%s'", ui.Cyan(branch), ui.Cyan(repoName))
