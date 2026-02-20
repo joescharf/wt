@@ -10,7 +10,7 @@ import (
 
 	"github.com/joescharf/wt/internal/claude"
 	"github.com/joescharf/wt/pkg/gitops"
-	"github.com/joescharf/wt/internal/iterm"
+	"github.com/joescharf/wt/pkg/iterm"
 	state "github.com/joescharf/wt/pkg/wtstate"
 	"github.com/joescharf/wt/internal/ui"
 )

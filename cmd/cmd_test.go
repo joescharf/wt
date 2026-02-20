@@ -15,8 +15,8 @@ import (
 	"github.com/joescharf/wt/internal/claude"
 	"github.com/joescharf/wt/pkg/gitops"
 	gitmocks "github.com/joescharf/wt/pkg/gitops/mocks"
-	"github.com/joescharf/wt/internal/iterm"
-	itermmocks "github.com/joescharf/wt/internal/iterm/mocks"
+	"github.com/joescharf/wt/pkg/iterm"
+	itermmocks "github.com/joescharf/wt/pkg/iterm/mocks"
 	state "github.com/joescharf/wt/pkg/wtstate"
 	"github.com/joescharf/wt/internal/ui"
 )

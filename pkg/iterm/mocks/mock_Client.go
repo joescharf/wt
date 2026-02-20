@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	iterm "github.com/joescharf/wt/internal/iterm"
+	iterm "github.com/joescharf/wt/pkg/iterm"
 	mock "github.com/stretchr/testify/mock"
 )
 

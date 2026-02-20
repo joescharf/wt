@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/joescharf/wt/pkg/gitops"
-	"github.com/joescharf/wt/internal/iterm"
+	"github.com/joescharf/wt/pkg/iterm"
 	state "github.com/joescharf/wt/pkg/wtstate"
 )
 
