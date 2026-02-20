@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/joescharf/wt/internal/claude"
+	"github.com/joescharf/wt/pkg/claude"
 	"github.com/joescharf/wt/pkg/gitops"
 	"github.com/joescharf/wt/pkg/iterm"
 	state "github.com/joescharf/wt/pkg/wtstate"

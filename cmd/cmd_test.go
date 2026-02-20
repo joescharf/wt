@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/joescharf/wt/internal/claude"
+	"github.com/joescharf/wt/pkg/claude"
 	"github.com/joescharf/wt/pkg/gitops"
 	gitmocks "github.com/joescharf/wt/pkg/gitops/mocks"
 	"github.com/joescharf/wt/pkg/iterm"
