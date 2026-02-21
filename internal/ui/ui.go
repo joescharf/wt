@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
+	"golang.org/x/term"
 )
 
 // UI provides colored output and respects verbose/dry-run modes.
@@ -114,4 +115,14 @@ func (u *UI) DryRunMsg(format string, a ...any) {
 	if u.DryRun {
 		u.Warning("[DRY-RUN] "+format, a...)
 	}
+}
+
+const defaultTermWidth = 80
+
+// TermWidth returns the current terminal width, falling back to 80 columns.
+func TermWidth() int {
+	if w, _, err := term.GetSize(int(os.Stdout.Fd())); err == nil && w > 0 {
+		return w
+	}
+	return defaultTermWidth
 }

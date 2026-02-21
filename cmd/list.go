@@ -55,7 +55,26 @@ func listRun() error {
 		return err
 	}
 
+	termWidth := ui.TermWidth()
 	baseBranch := viper.GetString("base_branch")
+
+	// Budget column widths based on terminal size.
+	// Table overhead: 6 border chars + 10 padding chars (1 each side × 5 cols) = 16
+	// Fixed columns: WINDOW(6) + STATUS(15) + AGE(4) = 25
+	const tableOverhead = 16
+	const fixedCols = 25
+	available := termWidth - tableOverhead - fixedCols
+	if available < 20 {
+		available = 20
+	}
+	maxBranch := available * 55 / 100
+	maxPath := available - maxBranch
+	if maxBranch < 10 {
+		maxBranch = 10
+	}
+	if maxPath < 10 {
+		maxPath = 10
+	}
 
 	var rows [][]string
 	for _, wt := range worktrees {
@@ -122,13 +141,11 @@ func listRun() error {
 			age = formatAge(time.Since(ws.CreatedAt.Time))
 		}
 
-		displayPath := wt.Path
-		if len(displayPath) > 30 {
-			displayPath = "..." + displayPath[len(displayPath)-27:]
-		}
+		displayBranch := truncRight(wt.Branch, maxBranch)
+		displayPath := truncLeft(wt.Path, maxPath)
 
 		rows = append(rows, []string{
-			wt.Branch,
+			displayBranch,
 			displayPath,
 			ui.StatusColor(windowStatus),
 			ui.GitStatusColor(gitStatus),
@@ -147,10 +164,11 @@ func listRun() error {
 			tablewriter.WithConfig(tablewriter.Config{
 				Header: tw.CellConfig{
 					Alignment:  tw.CellAlignment{Global: tw.AlignLeft},
-					Formatting: tw.CellFormatting{AutoFormat: tw.Off},
+					Formatting: tw.CellFormatting{AutoFormat: tw.Off, AutoWrap: tw.WrapTruncate},
 				},
 				Row: tw.CellConfig{
-					Alignment: tw.CellAlignment{Global: tw.AlignLeft},
+					Alignment:  tw.CellAlignment{Global: tw.AlignLeft},
+					Formatting: tw.CellFormatting{AutoWrap: tw.WrapTruncate},
 				},
 			}),
 			tablewriter.WithHeaderAutoFormat(tw.Off),
@@ -162,6 +180,28 @@ func listRun() error {
 	}
 	fmt.Fprintln(output.Out)
 	return nil
+}
+
+// truncRight truncates s from the right if it exceeds max, appending "…".
+func truncRight(s string, max int) string {
+	if len(s) <= max {
+		return s
+	}
+	if max <= 1 {
+		return "…"
+	}
+	return s[:max-1] + "…"
+}
+
+// truncLeft truncates s from the left if it exceeds max, prepending "…".
+func truncLeft(s string, max int) string {
+	if len(s) <= max {
+		return s
+	}
+	if max <= 1 {
+		return "…"
+	}
+	return "…" + s[len(s)-(max-1):]
 }
 
 func formatAge(d time.Duration) string {
