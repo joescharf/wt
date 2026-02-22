@@ -11,6 +11,8 @@ import (
 	"github.com/joescharf/wt/pkg/claude"
 	"github.com/joescharf/wt/pkg/gitops"
 	"github.com/joescharf/wt/pkg/iterm"
+	"github.com/joescharf/wt/pkg/lifecycle"
+	"github.com/joescharf/wt/pkg/ops"
 	state "github.com/joescharf/wt/pkg/wtstate"
 	"github.com/joescharf/wt/internal/ui"
 )
@@ -22,11 +24,21 @@ var (
 	stateMgr    *state.Manager
 	claudeTrust *claude.TrustManager
 	output      *ui.UI
+	opsLogger   ops.Logger
+	lcMgr       *lifecycle.Manager
 
 	verbose  bool
 	dryRun   bool
 	repoRoot string // resolved once from CWD at startup
 )
+
+// uiLogger adapts ui.UI to the ops.Logger interface.
+type uiLogger struct{ u *ui.UI }
+
+func (l *uiLogger) Info(format string, args ...interface{})    { l.u.Info(format, args...) }
+func (l *uiLogger) Success(format string, args ...interface{}) { l.u.Success(format, args...) }
+func (l *uiLogger) Warning(format string, args ...interface{}) { l.u.Warning(format, args...) }
+func (l *uiLogger) Verbose(format string, args ...interface{}) { l.u.VerboseLog(format, args...) }
 
 var rootCmd = &cobra.Command{
 	Use:   "wt",
@@ -113,6 +125,9 @@ func initDeps() {
 	if root, err := gitClient.RepoRoot("."); err == nil {
 		repoRoot = root
 	}
+
+	opsLogger = &uiLogger{u: output}
+	lcMgr = lifecycle.NewManager(gitClient, itermClient, stateMgr, claudeTrust, opsLogger)
 }
 
 // resolveStrategy determines the merge strategy based on flags and config.

@@ -18,6 +18,7 @@ import (
 	gitmocks "github.com/joescharf/wt/pkg/gitops/mocks"
 	"github.com/joescharf/wt/pkg/iterm"
 	itermmocks "github.com/joescharf/wt/pkg/iterm/mocks"
+	"github.com/joescharf/wt/pkg/lifecycle"
 	state "github.com/joescharf/wt/pkg/wtstate"
 	"github.com/joescharf/wt/internal/ui"
 )
@@ -62,6 +63,8 @@ func setupTest(t *testing.T) *testEnv {
 	claudeTrust = trust
 	output = u
 	repoRoot = dir
+	opsLogger = &uiLogger{u: u}
+	lcMgr = lifecycle.NewManager(mockGit, mockIterm, mgr, trust, &uiLogger{u: u})
 
 	// Reset flags
 	verbose = false
@@ -148,9 +151,10 @@ func TestCreate_ExistingWorktree(t *testing.T) {
 	wtPath := filepath.Join(wtDir, "auth")
 	os.MkdirAll(wtPath, 0755)
 
+	// lifecycle.Create calls: RepoName, WorktreesDir, detects dir exists, delegates to Open
+	// lifecycle.Open calls: RepoName, then CreateWorktreeWindow (no existing session)
 	env.git.EXPECT().RepoName(mock.Anything).Return("myrepo", nil).Times(2) // once for create, once for open
 	env.git.EXPECT().WorktreesDir(mock.Anything).Return(wtDir, nil)
-	env.git.EXPECT().ResolveWorktree(mock.Anything, "feature/auth").Return(wtPath, nil)
 	env.git.EXPECT().CurrentBranch(wtPath).Return("feature/auth", nil)
 
 	// open will be called since worktree exists
@@ -536,9 +540,9 @@ func TestOpen_NotFoundPromptAccepted(t *testing.T) {
 	wtDir := filepath.Join(env.dir, "repo.worktrees")
 	wtPath := filepath.Join(wtDir, "feat-mkdocs")
 
-	// openRun calls RepoName + ResolveWorktree (returns error), then createRun calls RepoName + WorktreesDir
-	env.git.EXPECT().RepoName(mock.Anything).Return("myrepo", nil).Times(2)
+	// openRun calls ResolveWorktree (returns error), then createRun -> lcMgr.Create calls RepoName + WorktreesDir
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "feat-mkdocs").Return("", fmt.Errorf("worktree not found: feat-mkdocs"))
+	env.git.EXPECT().RepoName(mock.Anything).Return("myrepo", nil)
 	env.git.EXPECT().WorktreesDir(mock.Anything).Return(wtDir, nil)
 	env.git.EXPECT().BranchExists(mock.Anything, "feat-mkdocs").Return(false, nil)
 	env.git.EXPECT().WorktreeAdd(mock.Anything, wtPath, "feat-mkdocs", "main", true).
@@ -560,7 +564,7 @@ func TestOpen_NotFoundPromptDenied(t *testing.T) {
 	env := setupTest(t)
 	promptDefaultYes = func(msg string) bool { return false }
 
-	env.git.EXPECT().RepoName(mock.Anything).Return("myrepo", nil)
+	// openRun calls ResolveWorktree (fails), warns, prompts (denied), returns nil
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "feat-mkdocs").Return("", fmt.Errorf("worktree not found: feat-mkdocs"))
 
 	err := openRun("feat-mkdocs")
@@ -766,7 +770,7 @@ func TestDryRun_Create(t *testing.T) {
 	ws, _ := env.state.GetWorktree(filepath.Join(wtDir, "dry"))
 	assert.Nil(t, ws)
 
-	assert.Contains(t, env.err.String(), "DRY-RUN")
+	assert.Contains(t, env.out.String(), "Would create worktree")
 }
 
 func TestDryRun_Open(t *testing.T) {
@@ -782,7 +786,7 @@ func TestDryRun_Open(t *testing.T) {
 
 	err := openRun("auth")
 	require.NoError(t, err)
-	assert.Contains(t, env.err.String(), "DRY-RUN")
+	assert.Contains(t, env.out.String(), "Would open iTerm2 window")
 }
 
 func TestDryRun_Switch(t *testing.T) {
@@ -859,7 +863,7 @@ func TestPrune_DryRun(t *testing.T) {
 	err := pruneRun()
 	require.NoError(t, err)
 
-	assert.Contains(t, env.err.String(), "DRY-RUN")
+	assert.Contains(t, env.out.String(), "Would run git worktree prune")
 }
 
 func TestDryRun_Delete(t *testing.T) {
@@ -879,7 +883,7 @@ func TestDryRun_Delete(t *testing.T) {
 
 	err := deleteRun("auth")
 	require.NoError(t, err)
-	assert.Contains(t, env.err.String(), "DRY-RUN")
+	assert.Contains(t, env.out.String(), "Would remove git worktree")
 	assert.DirExists(t, wtPath) // dir not removed
 }
 
@@ -987,7 +991,7 @@ func TestPrune_CleansOrphanedTrust(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, added, "existing trust should be preserved")
 
-	assert.Contains(t, env.out.String(), "Pruned 1 stale Claude trust")
+	assert.Contains(t, env.out.String(), "Pruned 1 stale trust entries")
 }
 
 // ─── Merge Tests ─────────────────────────────────────────────────────────────
@@ -1274,11 +1278,10 @@ func TestMerge_DryRun_Local(t *testing.T) {
 	err := mergeRun("feature/auth")
 	require.NoError(t, err)
 
-	errOut := env.err.String()
-	assert.Contains(t, errOut, "DRY-RUN")
-	assert.Contains(t, errOut, "Would merge")
-	assert.Contains(t, errOut, "Would pull")
-	assert.Contains(t, errOut, "Would push")
+	out := env.out.String()
+	assert.Contains(t, out, "Would merge")
+	assert.Contains(t, out, "Would pull")
+	assert.Contains(t, out, "Would push")
 	assert.DirExists(t, wtPath) // not removed in dry run
 }
 
@@ -1303,10 +1306,9 @@ func TestMerge_DryRun_PR(t *testing.T) {
 	err := mergeRun("feature/auth")
 	require.NoError(t, err)
 
-	errOut := env.err.String()
-	assert.Contains(t, errOut, "DRY-RUN")
-	assert.Contains(t, errOut, "Would push")
-	assert.Contains(t, errOut, "Would run: gh")
+	out := env.out.String()
+	assert.Contains(t, out, "Would push")
+	assert.Contains(t, out, "Would run: gh")
 }
 
 func TestMerge_WorktreeNotFound(t *testing.T) {
@@ -1448,14 +1450,13 @@ func TestMerge_Continue_DryRun(t *testing.T) {
 	err := mergeRun("feature/auth")
 	require.NoError(t, err)
 
-	errOut := env.err.String()
-	assert.Contains(t, errOut, "DRY-RUN")
-	assert.Contains(t, errOut, "git merge --continue")
+	out := env.out.String()
+	assert.Contains(t, out, "Would run: git merge --continue")
 }
 
-// ─── Cleanup Helper Tests ────────────────────────────────────────────────────
+// ─── Lifecycle Delete Tests ──────────────────────────────────────────────────
 
-func TestCleanupWorktree_FullCleanup(t *testing.T) {
+func TestLifecycleDelete_FullCleanup(t *testing.T) {
 	env := setupTest(t)
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
 	os.MkdirAll(wtPath, 0755)
@@ -1478,7 +1479,13 @@ func TestCleanupWorktree_FullCleanup(t *testing.T) {
 		Run(func(repoPath, path string, force bool) { os.RemoveAll(path) }).Return(nil)
 	env.git.EXPECT().BranchDelete(mock.Anything, "feature/auth", false).Return(nil)
 
-	err = cleanupWorktree(wtPath, "feature/auth", false, true)
+	err = lcMgr.Delete(lifecycle.DeleteOptions{
+		RepoPath:     env.dir,
+		WtPath:       wtPath,
+		Branch:       "feature/auth",
+		Force:        false,
+		DeleteBranch: true,
+	})
 	require.NoError(t, err)
 
 	// Verify state removed
@@ -1495,7 +1502,7 @@ func TestCleanupWorktree_FullCleanup(t *testing.T) {
 	assert.Contains(t, env.out.String(), "removed")
 }
 
-func TestCleanupWorktree_NoBranchDelete(t *testing.T) {
+func TestLifecycleDelete_NoBranchDelete(t *testing.T) {
 	env := setupTest(t)
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
 	os.MkdirAll(wtPath, 0755)
@@ -1503,9 +1510,14 @@ func TestCleanupWorktree_NoBranchDelete(t *testing.T) {
 	env.git.EXPECT().WorktreeRemove(mock.Anything, wtPath, true).
 		Run(func(repoPath, path string, force bool) { os.RemoveAll(path) }).Return(nil)
 
-	// No BranchDelete expected since deleteBranch=false
+	// No BranchDelete expected since DeleteBranch=false
 
-	err := cleanupWorktree(wtPath, "feature/auth", true, false)
+	err := lcMgr.Delete(lifecycle.DeleteOptions{
+		RepoPath: env.dir,
+		WtPath:   wtPath,
+		Branch:   "feature/auth",
+		Force:    true,
+	})
 	require.NoError(t, err)
 	assert.Contains(t, env.out.String(), "removed")
 }
@@ -1711,10 +1723,9 @@ func TestSync_DryRun(t *testing.T) {
 	err := syncRun("feature/auth")
 	require.NoError(t, err)
 
-	errOut := env.err.String()
-	assert.Contains(t, errOut, "DRY-RUN")
-	assert.Contains(t, errOut, "Would fetch")
-	assert.Contains(t, errOut, "Would merge")
+	out := env.out.String()
+	assert.Contains(t, out, "Would fetch")
+	assert.Contains(t, out, "Would merge")
 }
 
 func TestSync_All_Success(t *testing.T) {
@@ -2412,7 +2423,7 @@ func TestDiscover_DryRun(t *testing.T) {
 	err := discoverRun()
 	require.NoError(t, err)
 
-	assert.Contains(t, env.err.String(), "DRY-RUN")
+	assert.Contains(t, env.out.String(), "Would adopt")
 
 	// Verify state was NOT written
 	ws, _ := env.state.GetWorktree(externalPath)

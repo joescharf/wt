@@ -2,15 +2,11 @@ package cmd
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
-	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	state "github.com/joescharf/wt/pkg/wtstate"
-	"github.com/joescharf/wt/internal/ui"
+	"github.com/joescharf/wt/pkg/lifecycle"
 )
 
 var openNoClaude bool
@@ -33,11 +29,7 @@ func init() {
 // openRun is the core logic for opening/focusing an iTerm2 window.
 // Exported for reuse by create and root shorthand.
 func openRun(branch string) error {
-	repoName, err := gitClient.RepoName(repoRoot)
-	if err != nil {
-		return err
-	}
-
+	// Resolve worktree path
 	wtPath, err := gitClient.ResolveWorktree(repoRoot, branch)
 	if err != nil {
 		// Worktree not found — offer to create it
@@ -47,69 +39,16 @@ func openRun(branch string) error {
 		}
 		return nil
 	}
-	dirname := filepath.Base(wtPath)
-
-	// Check if window already exists
-	ws, err := stateMgr.GetWorktree(wtPath)
-	if err != nil {
-		return err
-	}
-	if ws != nil && ws.ClaudeSessionID != "" {
-		if itermClient.IsRunning() && itermClient.SessionExists(ws.ClaudeSessionID) {
-			output.Info("iTerm2 window already open, focusing it")
-			return itermClient.FocusWindow(ws.ClaudeSessionID)
-		}
-	}
-
-	if dryRun {
-		output.DryRunMsg("Would open iTerm2 window for %s", wtPath)
-		return nil
-	}
-
-	// Pre-approve Claude Code trust for this directory
-	if claudeTrust != nil {
-		if added, err := claudeTrust.TrustProject(wtPath); err != nil {
-			output.Warning("Failed to set Claude trust: %v", err)
-		} else if added {
-			output.VerboseLog("Claude trust set for %s", wtPath)
-		}
-	}
-
-	sessionName := fmt.Sprintf("wt:%s:%s", repoName, dirname)
-	output.Info("Opening iTerm2 window for '%s'", ui.Cyan(dirname))
 
 	noClaude := openNoClaude || viper.GetBool("no_claude")
-	sessions, err := itermClient.CreateWorktreeWindow(wtPath, sessionName, noClaude)
-	if err != nil {
-		return fmt.Errorf("failed to create iTerm2 window: %w", err)
-	}
 
-	// Get branch from state or git
-	branchName := branch
-	if ws != nil && ws.Branch != "" {
-		branchName = ws.Branch
-	} else {
-		if b, err := gitClient.CurrentBranch(wtPath); err == nil {
-			branchName = b
-		}
-	}
-
-	err = stateMgr.SetWorktree(wtPath, &state.WorktreeState{
-		Repo:            repoName,
-		Branch:          branchName,
-		ClaudeSessionID: sessions.ClaudeSessionID,
-		ShellSessionID:  sessions.ShellSessionID,
-		CreatedAt:       state.FlexTime{Time: time.Now().UTC()},
+	_, err = lcMgr.Open(lifecycle.OpenOptions{
+		RepoPath: repoRoot,
+		WtPath:   wtPath,
+		Branch:   branch,
+		NoClaude: noClaude,
+		DryRun:   dryRun,
 	})
-	if err != nil {
-		output.Warning("Window opened but failed to save state: %v", err)
-	}
-
-	output.Success("iTerm2 window opened for '%s'", ui.Cyan(dirname))
-	return nil
+	return err
 }
 
-func isDirectory(path string) bool {
-	info, err := os.Stat(path)
-	return err == nil && info.IsDir()
-}

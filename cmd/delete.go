@@ -5,13 +5,13 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/joescharf/wt/pkg/gitops"
 	"github.com/joescharf/wt/internal/ui"
+	"github.com/joescharf/wt/pkg/lifecycle"
+	"github.com/joescharf/wt/pkg/ops"
 )
 
 var (
@@ -100,80 +100,6 @@ func checkWorktreeSafety(wtPath, dirname string) bool {
 	return true
 }
 
-// cleanupWorktree performs full worktree cleanup: close window, remove worktree, delete branch, clean state/trust.
-// Used by both delete and merge commands.
-func cleanupWorktree(wtPath, branchName string, force, deleteBranch bool) error {
-	dirname := filepath.Base(wtPath)
-
-	// Close iTerm2 window if it exists
-	ws, _ := stateMgr.GetWorktree(wtPath)
-	if ws != nil && ws.ClaudeSessionID != "" {
-		if dryRun {
-			output.DryRunMsg("Would close iTerm2 window")
-		} else if itermClient.IsRunning() && itermClient.SessionExists(ws.ClaudeSessionID) {
-			if err := itermClient.CloseWindow(ws.ClaudeSessionID); err != nil {
-				output.Warning("Failed to close iTerm2 window: %v", err)
-			} else {
-				output.Success("Closed iTerm2 window")
-				time.Sleep(500 * time.Millisecond)
-			}
-		}
-	}
-
-	// Remove worktree
-	if dryRun {
-		output.DryRunMsg("Would remove git worktree: %s", wtPath)
-	} else {
-		output.Info("Removing git worktree")
-		if err := gitClient.WorktreeRemove(repoRoot, wtPath, force); err != nil {
-			return err
-		}
-		output.Success("Removed git worktree")
-	}
-
-	// Delete branch if requested
-	if deleteBranch {
-		if ws != nil && ws.Branch != "" {
-			branchName = ws.Branch
-		}
-
-		if dryRun {
-			output.DryRunMsg("Would delete branch '%s'", branchName)
-		} else {
-			err := gitClient.BranchDelete(repoRoot, branchName, false)
-			if err != nil {
-				if force {
-					err = gitClient.BranchDelete(repoRoot, branchName, true)
-					if err == nil {
-						output.Success("Force-deleted branch '%s'", branchName)
-					} else {
-						output.Warning("Could not delete branch '%s': %v", branchName, err)
-					}
-				} else {
-					output.Warning("Could not delete branch '%s' (may not exist or not fully merged)", branchName)
-				}
-			} else {
-				output.Success("Deleted branch '%s'", branchName)
-			}
-		}
-	}
-
-	// Remove state entry
-	if !dryRun {
-		_ = stateMgr.RemoveWorktree(wtPath)
-
-		// Remove Claude trust entry
-		if claudeTrust != nil {
-			if err := claudeTrust.UntrustProject(wtPath); err != nil {
-				output.Warning("Failed to remove Claude trust: %v", err)
-			}
-		}
-	}
-
-	output.Success("Worktree '%s' removed", ui.Cyan(dirname))
-	return nil
-}
-
 func deleteRun(branch string) error {
 	wtPath, err := gitClient.ResolveWorktree(repoRoot, branch)
 	if err != nil {
@@ -181,16 +107,37 @@ func deleteRun(branch string) error {
 	}
 	dirname := filepath.Base(wtPath)
 
-	output.Info("Deleting worktree '%s'", ui.Cyan(dirname))
-
-	// Safety checks (skip with --force)
-	if !deleteForce {
-		if !checkWorktreeSafety(wtPath, dirname) {
-			return fmt.Errorf("delete aborted")
+	// Build safety check callback
+	safetyCheck := func(checkPath string) (bool, error) {
+		checkDirname := filepath.Base(checkPath)
+		if !checkWorktreeSafety(checkPath, checkDirname) {
+			return false, nil
 		}
+		return true, nil
 	}
 
-	if err := cleanupWorktree(wtPath, branch, deleteForce, deleteBranchFlag); err != nil {
+	// Build cleanup callback using lifecycle manager
+	cleanup := func(cleanupWtPath, cleanupBranch string) error {
+		return lcMgr.Delete(lifecycle.DeleteOptions{
+			RepoPath:     repoRoot,
+			WtPath:       cleanupWtPath,
+			Branch:       cleanupBranch,
+			Force:        deleteForce,
+			DeleteBranch: deleteBranchFlag,
+			DryRun:       dryRun,
+		})
+	}
+
+	output.Info("Deleting worktree '%s'", ui.Cyan(dirname))
+
+	if err := ops.Delete(gitClient, opsLogger, ops.DeleteOptions{
+		RepoPath:     repoRoot,
+		WtPath:       wtPath,
+		Branch:       branch,
+		Force:        deleteForce,
+		DeleteBranch: deleteBranchFlag,
+		DryRun:       dryRun,
+	}, safetyCheck, cleanup); err != nil {
 		return err
 	}
 
@@ -199,83 +146,39 @@ func deleteRun(branch string) error {
 }
 
 func deleteAllRun() error {
-	worktrees, err := gitClient.WorktreeList(repoRoot)
+	// Build safety check callback
+	safetyCheck := func(checkPath string) (bool, error) {
+		checkDirname := filepath.Base(checkPath)
+		if !checkWorktreeSafety(checkPath, checkDirname) {
+			return false, nil
+		}
+		return true, nil
+	}
+
+	// Build cleanup callback using lifecycle manager
+	cleanup := func(cleanupWtPath, cleanupBranch string) error {
+		return lcMgr.Delete(lifecycle.DeleteOptions{
+			RepoPath:     repoRoot,
+			WtPath:       cleanupWtPath,
+			Branch:       cleanupBranch,
+			Force:        deleteForce,
+			DeleteBranch: deleteBranchFlag,
+			DryRun:       dryRun,
+		})
+	}
+
+	deleted, err := ops.DeleteAll(gitClient, opsLogger, ops.DeleteOptions{
+		RepoPath:     repoRoot,
+		Force:        deleteForce,
+		DeleteBranch: deleteBranchFlag,
+		DryRun:       dryRun,
+	}, safetyCheck, cleanup)
 	if err != nil {
 		return err
 	}
 
-	// Filter out main repo
-	var toDelete []gitops.WorktreeInfo
-	for _, wt := range worktrees {
-		if wt.Path != repoRoot {
-			toDelete = append(toDelete, wt)
-		}
+	if deleted > 0 {
+		fmt.Fprintln(output.Out)
 	}
-
-	if len(toDelete) == 0 {
-		output.Info("No worktrees to delete")
-		return nil
-	}
-
-	output.Info("Found %d worktrees to delete", len(toDelete))
-
-	deleted := 0
-	for _, wt := range toDelete {
-		dirname := filepath.Base(wt.Path)
-
-		if !isDirectory(wt.Path) {
-			continue
-		}
-
-		// Safety checks (skip with --force)
-		if !deleteForce {
-			if !checkWorktreeSafety(wt.Path, dirname) {
-				output.Info("Skipping '%s'", dirname)
-				continue
-			}
-		}
-
-		// Close iTerm2 window
-		ws, _ := stateMgr.GetWorktree(wt.Path)
-		if ws != nil && ws.ClaudeSessionID != "" {
-			if itermClient.IsRunning() && itermClient.SessionExists(ws.ClaudeSessionID) {
-				if err := itermClient.CloseWindow(ws.ClaudeSessionID); err != nil {
-					output.Warning("Failed to close window for %s: %v", dirname, err)
-				}
-			}
-		}
-
-		// Remove worktree
-		if err := gitClient.WorktreeRemove(repoRoot, wt.Path, deleteForce); err != nil {
-			output.Warning("Failed to remove %s: %v", dirname, err)
-			continue
-		}
-
-		// Delete branch if requested
-		if deleteBranchFlag {
-			branchName := wt.Branch
-			if ws != nil && ws.Branch != "" {
-				branchName = ws.Branch
-			}
-			if err := gitClient.BranchDelete(repoRoot, branchName, deleteForce); err != nil {
-				output.Warning("Could not delete branch '%s': %v", branchName, err)
-			}
-		}
-
-		_ = stateMgr.RemoveWorktree(wt.Path)
-		if claudeTrust != nil {
-			_ = claudeTrust.UntrustProject(wt.Path)
-		}
-		output.Success("Removed '%s'", ui.Cyan(dirname))
-		deleted++
-	}
-
-	// Run git worktree prune after bulk delete
-	if err := gitClient.WorktreePrune(repoRoot); err != nil {
-		output.Warning("Failed to run git worktree prune: %v", err)
-	}
-
-	fmt.Fprintln(output.Out)
-	output.Success("Deleted %d worktrees", deleted)
 	return nil
 }

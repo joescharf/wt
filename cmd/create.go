@@ -2,15 +2,11 @@ package cmd
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
-	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/joescharf/wt/pkg/gitops"
-	state "github.com/joescharf/wt/pkg/wtstate"
+	"github.com/joescharf/wt/pkg/lifecycle"
 	"github.com/joescharf/wt/internal/ui"
 )
 
@@ -39,120 +35,28 @@ func init() {
 }
 
 func createRun(branch string) error {
-	repoName, err := gitClient.RepoName(repoRoot)
-	if err != nil {
-		return err
-	}
-
-	wtDir, err := gitClient.WorktreesDir(repoRoot)
-	if err != nil {
-		return err
-	}
-
-	dirname := gitops.BranchToDirname(branch)
-	wtPath := filepath.Join(wtDir, dirname)
-
-	output.Info("Creating worktree for branch '%s' in repo '%s'", ui.Cyan(branch), ui.Cyan(repoName))
-	output.VerboseLog("Worktrees dir: %s", wtDir)
-	output.VerboseLog("Worktree path: %s", wtPath)
-
 	baseBranch := createBase
 	if baseBranch == "" {
 		baseBranch = viper.GetString("base_branch")
 	}
-	output.VerboseLog("Base branch: %s", baseBranch)
-
-	// If worktree already exists, delegate to open
-	if isDirectory(wtPath) {
-		output.Info("Worktree already exists, opening iTerm2 window")
-		return openRun(branch)
-	}
-
-	// Create worktrees directory if needed
-	if !isDirectory(wtDir) {
-		if dryRun {
-			output.DryRunMsg("Would create worktrees directory: %s", wtDir)
-		} else {
-			if err := os.MkdirAll(wtDir, 0755); err != nil {
-				return fmt.Errorf("failed to create worktrees directory: %w", err)
-			}
-			output.Success("Created worktrees directory")
-		}
-	}
-
-	// Check if branch already exists (auto-detect)
-	branchExists, err := gitClient.BranchExists(repoRoot, branch)
-	if err != nil {
-		return err
-	}
-
-	useExisting := createExisting || branchExists
-	if branchExists && !createExisting {
-		output.Info("Branch '%s' already exists, using it", branch)
-	}
-
-	if dryRun {
-		if useExisting {
-			output.DryRunMsg("Would create worktree from existing branch '%s'", branch)
-		} else {
-			output.DryRunMsg("Would create worktree with new branch '%s' from '%s'", branch, baseBranch)
-		}
-		output.DryRunMsg("Would create iTerm2 window for %s", wtPath)
-		output.DryRunMsg("Would save state")
-		return nil
-	}
-
-	// Create worktree
-	if useExisting {
-		output.Info("Creating worktree from existing branch '%s'", branch)
-		err = gitClient.WorktreeAdd(repoRoot, wtPath, branch, "", false)
-	} else {
-		output.Info("Creating worktree with new branch '%s' from '%s'", branch, baseBranch)
-		err = gitClient.WorktreeAdd(repoRoot, wtPath, branch, baseBranch, true)
-	}
-	if err != nil {
-		return err
-	}
-	output.Success("Git worktree created")
-
-	// Pre-approve Claude Code trust for this directory
-	if claudeTrust != nil {
-		if added, err := claudeTrust.TrustProject(wtPath); err != nil {
-			output.Warning("Failed to set Claude trust: %v", err)
-		} else if added {
-			output.VerboseLog("Claude trust set for %s", wtPath)
-		}
-	}
-
-	// Create iTerm2 window
-	sessionName := fmt.Sprintf("wt:%s:%s", repoName, dirname)
-	output.Info("Creating iTerm2 window (session: %s)", ui.Cyan(sessionName))
 
 	noClaude := createNoClaude || viper.GetBool("no_claude")
-	sessions, err := itermClient.CreateWorktreeWindow(wtPath, sessionName, noClaude)
-	if err != nil {
-		output.Warning("Worktree created but failed to open iTerm2 window: %v", err)
-		output.Info("Use 'wt open %s' to try again", branch)
-		return nil
-	}
 
-	output.VerboseLog("Claude session: %s", sessions.ClaudeSessionID)
-	output.VerboseLog("Shell session:  %s", sessions.ShellSessionID)
-
-	// Save state
-	err = stateMgr.SetWorktree(wtPath, &state.WorktreeState{
-		Repo:            repoName,
-		Branch:          branch,
-		ClaudeSessionID: sessions.ClaudeSessionID,
-		ShellSessionID:  sessions.ShellSessionID,
-		CreatedAt:       state.FlexTime{Time: time.Now().UTC()},
+	result, err := lcMgr.Create(lifecycle.CreateOptions{
+		RepoPath:   repoRoot,
+		Branch:     branch,
+		BaseBranch: baseBranch,
+		NoClaude:   noClaude,
+		Existing:   createExisting,
+		DryRun:     dryRun,
 	})
 	if err != nil {
-		output.Warning("Failed to save state: %v", err)
+		return err
 	}
 
-	fmt.Fprintln(output.Out)
-	output.Success("Worktree ready: %s", ui.Cyan(wtPath))
-	output.Success("iTerm2 window opened with Claude + shell panes")
+	if result.Created {
+		fmt.Fprintln(output.Out)
+		output.Success("Worktree ready: %s", ui.Cyan(result.WtPath))
+	}
 	return nil
 }

@@ -6,8 +6,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	state "github.com/joescharf/wt/pkg/wtstate"
 	"github.com/joescharf/wt/internal/ui"
+	"github.com/joescharf/wt/pkg/ops"
+	state "github.com/joescharf/wt/pkg/wtstate"
 )
 
 var discoverAdopt bool
@@ -27,94 +28,45 @@ func init() {
 }
 
 func discoverRun() error {
-	repoName, err := gitClient.RepoName(repoRoot)
-	if err != nil {
-		return err
+	// Build state checker callback
+	stateCheck := func(path string) (bool, error) {
+		ws, _ := stateMgr.GetWorktree(path)
+		return ws != nil, nil
 	}
 
-	wtDir, err := gitClient.WorktreesDir(repoRoot)
-	if err != nil {
-		return err
-	}
-
-	worktrees, err := gitClient.WorktreeList(repoRoot)
-	if err != nil {
-		return err
-	}
-
-	// Find worktrees that are NOT in wt state
-	var unmanaged []struct {
-		path   string
-		branch string
-	}
-
-	for _, wt := range worktrees {
-		// Skip the main repo
-		if wt.Path == repoRoot {
-			continue
-		}
-
-		// Check if already in state
-		ws, _ := stateMgr.GetWorktree(wt.Path)
-		if ws != nil {
-			continue
-		}
-
-		unmanaged = append(unmanaged, struct {
-			path   string
-			branch string
-		}{path: wt.Path, branch: wt.Branch})
-	}
-
-	if len(unmanaged) == 0 {
-		output.Success("No unmanaged worktrees found")
-		return nil
-	}
-
-	output.Info("Found %d unmanaged worktrees for '%s'", len(unmanaged), ui.Cyan(repoName))
-	fmt.Fprintln(output.Out)
-
-	for _, wt := range unmanaged {
-		source := classifySource(wt.path, wtDir)
-		output.Info("  %s  %s  (%s)", ui.Cyan(wt.branch), wt.path, source)
-	}
-	fmt.Fprintln(output.Out)
-
-	if !discoverAdopt {
-		output.Info("Run 'wt discover --adopt' to create state entries for these worktrees")
-		return nil
-	}
-
-	if dryRun {
-		output.DryRunMsg("Would adopt %d worktrees", len(unmanaged))
-		return nil
-	}
-
-	adopted := 0
-	for _, wt := range unmanaged {
-		err := stateMgr.SetWorktree(wt.path, &state.WorktreeState{
-			Repo:      repoName,
-			Branch:    wt.branch,
+	// Build state adopter callback
+	stateAdopt := func(path, repo, branch string) error {
+		return stateMgr.SetWorktree(path, &state.WorktreeState{
+			Repo:      repo,
+			Branch:    branch,
 			CreatedAt: state.FlexTime{Time: time.Now().UTC()},
 		})
-		if err != nil {
-			output.Warning("Failed to adopt '%s': %v", wt.branch, err)
-			continue
+	}
+
+	result, err := ops.Discover(gitClient, opsLogger, ops.DiscoverOptions{
+		RepoPath: repoRoot,
+		Adopt:    discoverAdopt,
+		DryRun:   dryRun,
+	}, stateCheck, stateAdopt)
+	if err != nil {
+		return err
+	}
+
+	// Print colored output for unmanaged worktrees (ops layer doesn't have UI colors)
+	if len(result.Unmanaged) > 0 {
+		fmt.Fprintln(output.Out)
+		for _, wt := range result.Unmanaged {
+			output.Info("  %s  %s  (%s)", ui.Cyan(wt.Branch), wt.Path, wt.Source)
 		}
-		output.Success("Adopted '%s'", ui.Cyan(wt.branch))
-		adopted++
+		fmt.Fprintln(output.Out)
+
+		if !discoverAdopt {
+			output.Info("Run 'wt discover --adopt' to create state entries for these worktrees")
+		}
 	}
 
-	fmt.Fprintln(output.Out)
-	output.Success("Adopted %d worktrees", adopted)
+	if result.Adopted > 0 {
+		fmt.Fprintln(output.Out)
+	}
 	return nil
-}
-
-// classifySource determines the source label for a worktree path.
-// "wt" if in the standard worktrees dir, "external" otherwise.
-func classifySource(wtPath, standardDir string) string {
-	if len(wtPath) > len(standardDir) && wtPath[:len(standardDir)] == standardDir {
-		return "wt"
-	}
-	return "external"
 }

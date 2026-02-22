@@ -21,13 +21,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Architecture
 
-**CLI layer** (`cmd/`): Cobra commands with Viper config. Package-level vars (`gitClient`, `itermClient`, `stateMgr`, `claudeTrust`, `output`) initialized in `cobra.OnInitialize(initConfig, initDeps)`.
+**CLI layer** (`cmd/`): Cobra commands with Viper config. Thin wrappers that parse flags, resolve worktree/branch, then delegate to `pkg/ops` or `pkg/lifecycle`. Package-level vars (`gitClient`, `itermClient`, `stateMgr`, `claudeTrust`, `output`, `opsLogger`, `lcMgr`) initialized in `cobra.OnInitialize(initConfig, initDeps)`. `uiLogger` adapter bridges `ui.UI` to `ops.Logger`.
 
-**Business logic** (`pkg/ops/`): Pure functions (`Sync`, `Merge`, `Delete`, `Prune`) that accept interfaces and return result structs. Used by both CLI and lifecycle manager.
+**Business logic** (`pkg/ops/`): Pure functions (`Sync`, `Merge`, `Delete`, `Prune`, `Discover`) that accept interfaces and return result structs. Uses callback types (`SafetyCheckFunc`, `CleanupFunc`, `PRCreateFunc`) for dependency injection. Used by both CLI and lifecycle manager.
 
-**Lifecycle orchestrator** (`pkg/lifecycle/`): Combines git+iterm+state+trust operations for create/open/delete. Designed for library consumers.
+**Lifecycle orchestrator** (`pkg/lifecycle/`): `Manager` combines git+iterm+state+trust operations for create/open/delete. Designed for library consumers (e.g., `pm`).
 
-**Git operations** (`pkg/gitops/`): `Client` interface with `RealClient` that shells out to `git`. CWD-based.
+**Git operations** (`pkg/gitops/`): Path-based `Client` interface with `RealClient` that shells out to `git -C repoPath`. Every method takes `repoPath` as first parameter.
 
 **iTerm2 integration** (`pkg/iterm/`): `Client` interface using AppleScript via `osascript`.
 
@@ -35,13 +35,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Claude trust** (`pkg/claude/`): Manages `hasTrustDialogAccepted` in `~/.claude.json`.
 
-**MCP server** (`internal/mcp/`): Path-based `GitClient` interface (no CWD context for stdio). Uses `mark3labs/mcp-go`.
+**MCP server** (`internal/mcp/`): Exposes worktree operations as MCP tools over stdio. Uses `mark3labs/mcp-go` and the shared `pkg/gitops.Client`.
 
 **UI** (`internal/ui/`): `UI` struct with colored output, verbose/dry-run modes, terminal-width-aware tables.
-
-### Two Git Client Variants
-- `pkg/gitops.Client` — CWD-based, used by CLI commands
-- `internal/mcp.GitClient` — path-based (every method takes `repoPath`), used by MCP server
 
 ### Strategy Resolution
 `resolveStrategy()` in `cmd/root.go`: `--rebase` flag > `--merge` flag > viper `rebase` config > default "merge".
