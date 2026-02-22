@@ -27,22 +27,17 @@ func init() {
 }
 
 func discoverRun() error {
-	repoRoot, err := gitClient.RepoRoot()
+	repoName, err := gitClient.RepoName(repoRoot)
 	if err != nil {
 		return err
 	}
 
-	repoName, err := gitClient.RepoName()
+	wtDir, err := gitClient.WorktreesDir(repoRoot)
 	if err != nil {
 		return err
 	}
 
-	wtDir, err := gitClient.WorktreesDir()
-	if err != nil {
-		return err
-	}
-
-	worktrees, err := gitClient.WorktreeList()
+	worktrees, err := gitClient.WorktreeList(repoRoot)
 	if err != nil {
 		return err
 	}

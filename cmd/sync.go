@@ -47,7 +47,7 @@ func init() {
 
 func syncRun(branch string) error {
 	// Resolve worktree
-	wtPath, err := gitClient.ResolveWorktree(branch)
+	wtPath, err := gitClient.ResolveWorktree(repoRoot, branch)
 	if err != nil {
 		return err
 	}
@@ -96,7 +96,7 @@ func syncRun(branch string) error {
 	}
 
 	// Determine merge source based on remote availability
-	hasRemote, err := gitClient.HasRemote()
+	hasRemote, err := gitClient.HasRemote(repoRoot)
 	if err != nil {
 		output.VerboseLog("Could not check for remote: %v", err)
 	}
@@ -104,10 +104,6 @@ func syncRun(branch string) error {
 	mergeSource := baseBranch
 	if hasRemote {
 		// Fetch to get latest changes
-		repoRoot, err := gitClient.RepoRoot()
-		if err != nil {
-			return err
-		}
 		if dryRun {
 			output.DryRunMsg("Would fetch from remote")
 		} else {
@@ -240,12 +236,7 @@ func syncContinueRebase(wtPath, branchName, baseBranch string) error {
 }
 
 func syncAllRun() error {
-	worktrees, err := gitClient.WorktreeList()
-	if err != nil {
-		return err
-	}
-
-	repoRoot, err := gitClient.RepoRoot()
+	worktrees, err := gitClient.WorktreeList(repoRoot)
 	if err != nil {
 		return err
 	}
@@ -276,7 +267,7 @@ func syncAllRun() error {
 	}
 
 	// Fetch once if remote exists
-	hasRemote, err := gitClient.HasRemote()
+	hasRemote, err := gitClient.HasRemote(repoRoot)
 	if err != nil {
 		output.VerboseLog("Could not check for remote: %v", err)
 	}

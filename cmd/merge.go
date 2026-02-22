@@ -59,7 +59,7 @@ func init() {
 
 func mergeRun(branch string) error {
 	// Resolve worktree
-	wtPath, err := gitClient.ResolveWorktree(branch)
+	wtPath, err := gitClient.ResolveWorktree(repoRoot, branch)
 	if err != nil {
 		return err
 	}
@@ -105,12 +105,6 @@ func mergeRun(branch string) error {
 }
 
 func mergeLocalRun(wtPath, branchName, baseBranch, dirname string) error {
-	// Get repo root
-	repoRoot, err := gitClient.RepoRoot()
-	if err != nil {
-		return err
-	}
-
 	strategy := resolveStrategy(mergeRebase, mergeMerge)
 
 	// Check if a merge is already in progress in main repo
@@ -141,7 +135,7 @@ func mergeLocalRun(wtPath, branchName, baseBranch, dirname string) error {
 	}
 
 	// Pull base branch if remote exists
-	hasRemote, err := gitClient.HasRemote()
+	hasRemote, err := gitClient.HasRemote(repoRoot)
 	if err != nil {
 		output.VerboseLog("Could not check for remote: %v", err)
 	}
@@ -264,9 +258,9 @@ func mergeLocalContinueRebase(repoRoot, wtPath, branchName, baseBranch string) e
 }
 
 // mergeLocalFinish handles push + cleanup after a successful merge.
-func mergeLocalFinish(repoRoot, wtPath, branchName, baseBranch string) error {
+func mergeLocalFinish(mergeRepoRoot, wtPath, branchName, baseBranch string) error {
 	// Push base branch if remote exists
-	hasRemote, err := gitClient.HasRemote()
+	hasRemote, err := gitClient.HasRemote(repoRoot)
 	if err != nil {
 		output.VerboseLog("Could not check for remote: %v", err)
 	}
@@ -276,7 +270,7 @@ func mergeLocalFinish(repoRoot, wtPath, branchName, baseBranch string) error {
 			output.DryRunMsg("Would push '%s'", baseBranch)
 		} else {
 			output.Info("Pushing '%s'", baseBranch)
-			if err := gitClient.Push(repoRoot, baseBranch, false); err != nil {
+			if err := gitClient.Push(mergeRepoRoot, baseBranch, false); err != nil {
 				output.Warning("Push failed: %v (merge succeeded locally)", err)
 			} else {
 				output.Success("Pushed '%s'", baseBranch)

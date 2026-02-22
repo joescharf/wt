@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/joescharf/wt/pkg/gitops"
 	wmcp "github.com/joescharf/wt/internal/mcp"
 	state "github.com/joescharf/wt/pkg/wtstate"
 )
@@ -71,7 +72,7 @@ func init() {
 }
 
 func mcpServeRun() error {
-	gc := wmcp.NewGitClient()
+	gc := gitops.NewClient()
 
 	// For the MCP server, create a minimal state manager.
 	// The state file location matches initDeps() in root.go.

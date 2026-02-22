@@ -237,6 +237,47 @@ func (m *mockGitClient) WorktreePrune(repoPath string) error {
 	return nil
 }
 
+func (m *mockGitClient) BranchList(repoPath string) ([]string, error) {
+	var branches []string
+	for b := range m.branches {
+		branches = append(branches, b)
+	}
+	return branches, nil
+}
+
+func (m *mockGitClient) ResolveWorktree(repoPath, input string) (string, error) {
+	for _, wt := range m.worktrees {
+		if wt.Branch == input || filepath.Base(wt.Path) == input {
+			return wt.Path, nil
+		}
+	}
+	return "", fmt.Errorf("worktree not found: %s", input)
+}
+
+func (m *mockGitClient) MergeContinue(repoPath string) error {
+	return nil
+}
+
+func (m *mockGitClient) IsMergeInProgress(repoPath string) (bool, error) {
+	return false, nil
+}
+
+func (m *mockGitClient) HasConflicts(repoPath string) (bool, error) {
+	return false, nil
+}
+
+func (m *mockGitClient) RebaseContinue(repoPath string) error {
+	return nil
+}
+
+func (m *mockGitClient) RebaseAbort(repoPath string) error {
+	return nil
+}
+
+func (m *mockGitClient) IsRebaseInProgress(repoPath string) (bool, error) {
+	return false, nil
+}
+
 // mockItermClient implements iterm.Client for testing.
 type mockItermClient struct {
 	running  bool
@@ -1043,8 +1084,8 @@ func TestMCPIntegration_ListTools(t *testing.T) {
 
 // Compile-time interface checks for mocks.
 var (
-	_ GitClient    = (*mockGitClient)(nil)
-	_ iterm.Client = (*mockItermClient)(nil)
+	_ gitops.Client = (*mockGitClient)(nil)
+	_ iterm.Client  = (*mockItermClient)(nil)
 )
 
 // Reference mcpserver to keep the import active.

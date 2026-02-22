@@ -16,22 +16,24 @@ type WorktreeInfo struct {
 }
 
 // Client defines the interface for git operations.
+// All methods that operate on a repository take repoPath as the first parameter,
+// enabling path-based operation without relying on CWD.
 // Pure utility functions (BranchToDirname, ResolveWorktreePath) are package-level functions.
 type Client interface {
-	RepoRoot() (string, error)
-	RepoName() (string, error)
-	WorktreesDir() (string, error)
-	WorktreeList() ([]WorktreeInfo, error)
-	WorktreeAdd(path, branch, base string, newBranch bool) error
-	WorktreeRemove(path string, force bool) error
-	BranchExists(branch string) (bool, error)
-	BranchDelete(branch string, force bool) error
+	RepoRoot(repoPath string) (string, error)
+	RepoName(repoPath string) (string, error)
+	WorktreesDir(repoPath string) (string, error)
+	WorktreeList(repoPath string) ([]WorktreeInfo, error)
+	WorktreeAdd(repoPath, wtPath, branch, base string, newBranch bool) error
+	WorktreeRemove(repoPath, wtPath string, force bool) error
+	BranchExists(repoPath, branch string) (bool, error)
+	BranchDelete(repoPath, branch string, force bool) error
 	CurrentBranch(worktreePath string) (string, error)
-	ResolveWorktree(input string) (string, error)
-	BranchList() ([]string, error)
+	ResolveWorktree(repoPath, input string) (string, error)
+	BranchList(repoPath string) ([]string, error)
 	IsWorktreeDirty(path string) (bool, error)
 	HasUnpushedCommits(path, baseBranch string) (bool, error)
-	WorktreePrune() error
+	WorktreePrune(repoPath string) error
 	Merge(repoPath, branch string) error
 	MergeContinue(repoPath string) error
 	IsMergeInProgress(repoPath string) (bool, error)
@@ -42,7 +44,7 @@ type Client interface {
 	IsRebaseInProgress(repoPath string) (bool, error)
 	Pull(repoPath string) error
 	Push(worktreePath, branch string, setUpstream bool) error
-	HasRemote() (bool, error)
+	HasRemote(repoPath string) (bool, error)
 	Fetch(repoPath string) error
 	CommitsAhead(worktreePath, baseBranch string) (int, error)
 	CommitsBehind(worktreePath, baseBranch string) (int, error)
@@ -56,23 +58,21 @@ func NewClient() *RealClient {
 	return &RealClient{}
 }
 
-func (c *RealClient) RepoRoot() (string, error) {
-	out, err := exec.Command("git", "rev-parse", "--git-common-dir").Output()
+func (c *RealClient) RepoRoot(repoPath string) (string, error) {
+	out, err := exec.Command("git", "-C", repoPath, "rev-parse", "--git-common-dir").Output()
 	if err != nil {
 		return "", fmt.Errorf("not inside a git repository: %w", err)
 	}
 
 	gitCommonDir := strings.TrimSpace(string(out))
 
-	// For a main repo: .git (relative) or /abs/path/.git
-	// For a worktree: /abs/path/to/main/.git
 	var root string
 	if gitCommonDir == ".git" {
-		cwd, err := os.Getwd()
+		absPath, err := filepath.Abs(repoPath)
 		if err != nil {
 			return "", err
 		}
-		root = cwd
+		root = absPath
 	} else {
 		absGitDir, err := filepath.Abs(gitCommonDir)
 		if err != nil {
@@ -89,24 +89,24 @@ func (c *RealClient) RepoRoot() (string, error) {
 	return resolved, nil
 }
 
-func (c *RealClient) RepoName() (string, error) {
-	root, err := c.RepoRoot()
+func (c *RealClient) RepoName(repoPath string) (string, error) {
+	root, err := c.RepoRoot(repoPath)
 	if err != nil {
 		return "", err
 	}
 	return filepath.Base(root), nil
 }
 
-func (c *RealClient) WorktreesDir() (string, error) {
-	root, err := c.RepoRoot()
+func (c *RealClient) WorktreesDir(repoPath string) (string, error) {
+	root, err := c.RepoRoot(repoPath)
 	if err != nil {
 		return "", err
 	}
 	return root + ".worktrees", nil
 }
 
-func (c *RealClient) WorktreeList() ([]WorktreeInfo, error) {
-	root, err := c.RepoRoot()
+func (c *RealClient) WorktreeList(repoPath string) ([]WorktreeInfo, error) {
+	root, err := c.RepoRoot(repoPath)
 	if err != nil {
 		return nil, err
 	}
@@ -148,17 +148,17 @@ func ParseWorktreeListPorcelain(output string) []WorktreeInfo {
 	return worktrees
 }
 
-func (c *RealClient) WorktreeAdd(path, branch, base string, newBranch bool) error {
-	root, err := c.RepoRoot()
+func (c *RealClient) WorktreeAdd(repoPath, wtPath, branch, base string, newBranch bool) error {
+	root, err := c.RepoRoot(repoPath)
 	if err != nil {
 		return err
 	}
 
 	var cmd *exec.Cmd
 	if newBranch {
-		cmd = exec.Command("git", "-C", root, "worktree", "add", "-b", branch, path, base)
+		cmd = exec.Command("git", "-C", root, "worktree", "add", "-b", branch, wtPath, base)
 	} else {
-		cmd = exec.Command("git", "-C", root, "worktree", "add", path, branch)
+		cmd = exec.Command("git", "-C", root, "worktree", "add", wtPath, branch)
 	}
 
 	out, err := cmd.CombinedOutput()
@@ -168,8 +168,8 @@ func (c *RealClient) WorktreeAdd(path, branch, base string, newBranch bool) erro
 	return nil
 }
 
-func (c *RealClient) WorktreeRemove(path string, force bool) error {
-	root, err := c.RepoRoot()
+func (c *RealClient) WorktreeRemove(repoPath, wtPath string, force bool) error {
+	root, err := c.RepoRoot(repoPath)
 	if err != nil {
 		return err
 	}
@@ -178,7 +178,7 @@ func (c *RealClient) WorktreeRemove(path string, force bool) error {
 	if force {
 		args = append(args, "--force")
 	}
-	args = append(args, path)
+	args = append(args, wtPath)
 
 	out, err := exec.Command("git", args...).CombinedOutput()
 	if err != nil {
@@ -187,8 +187,8 @@ func (c *RealClient) WorktreeRemove(path string, force bool) error {
 	return nil
 }
 
-func (c *RealClient) BranchExists(branch string) (bool, error) {
-	root, err := c.RepoRoot()
+func (c *RealClient) BranchExists(repoPath, branch string) (bool, error) {
+	root, err := c.RepoRoot(repoPath)
 	if err != nil {
 		return false, err
 	}
@@ -203,8 +203,8 @@ func (c *RealClient) BranchExists(branch string) (bool, error) {
 	return true, nil
 }
 
-func (c *RealClient) BranchDelete(branch string, force bool) error {
-	root, err := c.RepoRoot()
+func (c *RealClient) BranchDelete(repoPath, branch string, force bool) error {
+	root, err := c.RepoRoot(repoPath)
 	if err != nil {
 		return err
 	}
@@ -221,8 +221,8 @@ func (c *RealClient) BranchDelete(branch string, force bool) error {
 	return nil
 }
 
-func (c *RealClient) BranchList() ([]string, error) {
-	root, err := c.RepoRoot()
+func (c *RealClient) BranchList(repoPath string) ([]string, error) {
+	root, err := c.RepoRoot(repoPath)
 	if err != nil {
 		return nil, err
 	}
@@ -264,8 +264,8 @@ func (c *RealClient) HasUnpushedCommits(path, baseBranch string) (bool, error) {
 	return strings.TrimSpace(string(out)) != "", nil
 }
 
-func (c *RealClient) WorktreePrune() error {
-	root, err := c.RepoRoot()
+func (c *RealClient) WorktreePrune(repoPath string) error {
+	root, err := c.RepoRoot(repoPath)
 	if err != nil {
 		return err
 	}
@@ -285,7 +285,7 @@ func (c *RealClient) CurrentBranch(worktreePath string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
-func (c *RealClient) ResolveWorktree(input string) (string, error) {
+func (c *RealClient) ResolveWorktree(repoPath, input string) (string, error) {
 	// Fast path: absolute path passthrough
 	if filepath.IsAbs(input) {
 		if isDir(input) {
@@ -295,7 +295,7 @@ func (c *RealClient) ResolveWorktree(input string) (string, error) {
 	}
 
 	// Fast path: check standard <repo>.worktrees/ directory
-	wtDir, err := c.WorktreesDir()
+	wtDir, err := c.WorktreesDir(repoPath)
 	if err != nil {
 		return "", err
 	}
@@ -311,7 +311,7 @@ func (c *RealClient) ResolveWorktree(input string) (string, error) {
 	}
 
 	// Fallback: search git worktree list for branch/dirname match
-	worktrees, err := c.WorktreeList()
+	worktrees, err := c.WorktreeList(repoPath)
 	if err != nil {
 		return "", fmt.Errorf("worktree not found: %s", input)
 	}
@@ -507,8 +507,8 @@ func (c *RealClient) Push(worktreePath, branch string, setUpstream bool) error {
 	return nil
 }
 
-func (c *RealClient) HasRemote() (bool, error) {
-	root, err := c.RepoRoot()
+func (c *RealClient) HasRemote(repoPath string) (bool, error) {
+	root, err := c.RepoRoot(repoPath)
 	if err != nil {
 		return false, err
 	}
@@ -557,4 +557,3 @@ func isDir(path string) bool {
 	info, err := os.Stat(path)
 	return err == nil && info.IsDir()
 }
-

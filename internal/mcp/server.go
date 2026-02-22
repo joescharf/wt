@@ -23,14 +23,14 @@ type Config struct {
 
 // Server wraps the wt dependencies and exposes them as MCP tools.
 type Server struct {
-	git   GitClient
+	git   gitops.Client
 	iterm iterm.Client
 	state *state.Manager
 	cfg   Config
 }
 
 // NewServer creates the MCP server wrapper with all required dependencies.
-func NewServer(gc GitClient, ic iterm.Client, sm *state.Manager, cfg Config) *Server {
+func NewServer(gc gitops.Client, ic iterm.Client, sm *state.Manager, cfg Config) *Server {
 	if cfg.BaseBranch == "" {
 		cfg.BaseBranch = "main"
 	}

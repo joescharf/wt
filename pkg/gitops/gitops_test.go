@@ -10,6 +10,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// NOTE: Integration tests use the path-based Client interface.
+// No os.Chdir is needed — all methods accept repoPath as first parameter.
+
 func TestBranchToDirname(t *testing.T) {
 	tests := []struct {
 		branch string
@@ -158,14 +161,8 @@ func initTestRepo(t *testing.T) string {
 func TestRepoRoot_Integration(t *testing.T) {
 	repoDir := initTestRepo(t)
 
-	// Change to repo dir for the test
-	orig, err := os.Getwd()
-	require.NoError(t, err)
-	t.Cleanup(func() { os.Chdir(orig) })
-	os.Chdir(repoDir)
-
 	client := NewClient()
-	root, err := client.RepoRoot()
+	root, err := client.RepoRoot(repoDir)
 	require.NoError(t, err)
 	assert.Equal(t, repoDir, root)
 }
@@ -176,31 +173,26 @@ func TestWorktreeLifecycle_Integration(t *testing.T) {
 	err := os.MkdirAll(wtDir, 0755)
 	require.NoError(t, err)
 
-	orig, err := os.Getwd()
-	require.NoError(t, err)
-	t.Cleanup(func() { os.Chdir(orig) })
-	os.Chdir(repoDir)
-
 	client := NewClient()
 
 	// Create worktree with new branch
 	wtPath := filepath.Join(wtDir, "auth")
-	err = client.WorktreeAdd(wtPath, "feature/auth", "HEAD", true)
+	err = client.WorktreeAdd(repoDir, wtPath, "feature/auth", "HEAD", true)
 	require.NoError(t, err)
 	assert.DirExists(t, wtPath)
 
 	// List worktrees
-	list, err := client.WorktreeList()
+	list, err := client.WorktreeList(repoDir)
 	require.NoError(t, err)
 	require.Len(t, list, 2) // main + new worktree
 
 	// Branch exists
-	exists, err := client.BranchExists("feature/auth")
+	exists, err := client.BranchExists(repoDir, "feature/auth")
 	require.NoError(t, err)
 	assert.True(t, exists)
 
 	// Branch doesn't exist
-	exists, err = client.BranchExists("nonexistent")
+	exists, err = client.BranchExists(repoDir, "nonexistent")
 	require.NoError(t, err)
 	assert.False(t, exists)
 
@@ -210,7 +202,7 @@ func TestWorktreeLifecycle_Integration(t *testing.T) {
 	assert.Equal(t, "feature/auth", branch)
 
 	// Remove worktree
-	err = client.WorktreeRemove(wtPath, false)
+	err = client.WorktreeRemove(repoDir, wtPath, false)
 	require.NoError(t, err)
 	assert.NoDirExists(t, wtPath)
 }
@@ -225,13 +217,8 @@ func TestBranchList_Integration(t *testing.T) {
 		require.NoError(t, err, "create branch %s: %s", branch, string(out))
 	}
 
-	orig, err := os.Getwd()
-	require.NoError(t, err)
-	t.Cleanup(func() { os.Chdir(orig) })
-	os.Chdir(repoDir)
-
 	client := NewClient()
-	branches, err := client.BranchList()
+	branches, err := client.BranchList(repoDir)
 	require.NoError(t, err)
 
 	assert.GreaterOrEqual(t, len(branches), 3)
@@ -241,11 +228,6 @@ func TestBranchList_Integration(t *testing.T) {
 
 func TestIsWorktreeDirty_Integration(t *testing.T) {
 	repoDir := initTestRepo(t)
-
-	orig, err := os.Getwd()
-	require.NoError(t, err)
-	t.Cleanup(func() { os.Chdir(orig) })
-	os.Chdir(repoDir)
 
 	client := NewClient()
 
@@ -266,20 +248,15 @@ func TestIsWorktreeDirty_Integration(t *testing.T) {
 func TestHasUnpushedCommits_Integration(t *testing.T) {
 	repoDir := initTestRepo(t)
 
-	orig, err := os.Getwd()
-	require.NoError(t, err)
-	t.Cleanup(func() { os.Chdir(orig) })
-	os.Chdir(repoDir)
-
 	client := NewClient()
 
 	// Create a worktree with a branch
 	wtDir := repoDir + ".worktrees"
-	err = os.MkdirAll(wtDir, 0755)
+	err := os.MkdirAll(wtDir, 0755)
 	require.NoError(t, err)
 
 	wtPath := filepath.Join(wtDir, "test-branch")
-	err = client.WorktreeAdd(wtPath, "test-branch", "HEAD", true)
+	err = client.WorktreeAdd(repoDir, wtPath, "test-branch", "HEAD", true)
 	require.NoError(t, err)
 
 	// Get the main branch name
@@ -311,35 +288,25 @@ func TestHasUnpushedCommits_Integration(t *testing.T) {
 func TestWorktreePrune_Integration(t *testing.T) {
 	repoDir := initTestRepo(t)
 
-	orig, err := os.Getwd()
-	require.NoError(t, err)
-	t.Cleanup(func() { os.Chdir(orig) })
-	os.Chdir(repoDir)
-
 	client := NewClient()
 
 	// Should succeed even with nothing to prune
-	err = client.WorktreePrune()
+	err := client.WorktreePrune(repoDir)
 	require.NoError(t, err)
 }
 
 func TestCommitsAhead_Integration(t *testing.T) {
 	repoDir := initTestRepo(t)
 
-	orig, err := os.Getwd()
-	require.NoError(t, err)
-	t.Cleanup(func() { os.Chdir(orig) })
-	os.Chdir(repoDir)
-
 	client := NewClient()
 
 	// Create a worktree with a branch
 	wtDir := repoDir + ".worktrees"
-	err = os.MkdirAll(wtDir, 0755)
+	err := os.MkdirAll(wtDir, 0755)
 	require.NoError(t, err)
 
 	wtPath := filepath.Join(wtDir, "test-branch")
-	err = client.WorktreeAdd(wtPath, "test-branch", "HEAD", true)
+	err = client.WorktreeAdd(repoDir, wtPath, "test-branch", "HEAD", true)
 	require.NoError(t, err)
 
 	mainBranch, err := client.CurrentBranch(repoDir)
@@ -366,20 +333,15 @@ func TestCommitsAhead_Integration(t *testing.T) {
 func TestCommitsBehind_Integration(t *testing.T) {
 	repoDir := initTestRepo(t)
 
-	orig, err := os.Getwd()
-	require.NoError(t, err)
-	t.Cleanup(func() { os.Chdir(orig) })
-	os.Chdir(repoDir)
-
 	client := NewClient()
 
 	// Create a worktree with a branch
 	wtDir := repoDir + ".worktrees"
-	err = os.MkdirAll(wtDir, 0755)
+	err := os.MkdirAll(wtDir, 0755)
 	require.NoError(t, err)
 
 	wtPath := filepath.Join(wtDir, "test-branch")
-	err = client.WorktreeAdd(wtPath, "test-branch", "HEAD", true)
+	err = client.WorktreeAdd(repoDir, wtPath, "test-branch", "HEAD", true)
 	require.NoError(t, err)
 
 	// Get the main branch name
@@ -436,11 +398,6 @@ func TestFetch_Integration(t *testing.T) {
 		require.NoError(t, err, "cmd %v failed: %s", args, string(out))
 	}
 
-	orig, err := os.Getwd()
-	require.NoError(t, err)
-	t.Cleanup(func() { os.Chdir(orig) })
-	os.Chdir(repoDir)
-
 	client := NewClient()
 
 	// Fetch should succeed
@@ -452,16 +409,11 @@ func TestFetch_NoRemote_Integration(t *testing.T) {
 	// Fetch on a repo with no remote should fail
 	repoDir := initTestRepo(t)
 
-	orig, err := os.Getwd()
-	require.NoError(t, err)
-	t.Cleanup(func() { os.Chdir(orig) })
-	os.Chdir(repoDir)
-
 	client := NewClient()
 
 	// Fetch with no remote - git fetch exits 0 but does nothing
 	// This should not error since git fetch with no remote just exits cleanly
-	err = client.Fetch(repoDir)
+	err := client.Fetch(repoDir)
 	// git fetch on a repo with no remote may or may not error depending on git version
 	// We just verify it doesn't panic
 	_ = err

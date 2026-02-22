@@ -64,12 +64,7 @@ func completeWorktreeNames(cmd *cobra.Command, args []string, toComplete string)
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
 
-	repoRoot, err := gitClient.RepoRoot()
-	if err != nil {
-		return nil, cobra.ShellCompDirectiveNoFileComp
-	}
-
-	worktrees, err := gitClient.WorktreeList()
+	worktrees, err := gitClient.WorktreeList(repoRoot)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
@@ -90,7 +85,7 @@ func completeBranchNames(cmd *cobra.Command, args []string, toComplete string) (
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
 
-	branches, err := gitClient.BranchList()
+	branches, err := gitClient.BranchList(repoRoot)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}

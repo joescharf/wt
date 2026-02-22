@@ -25,7 +25,7 @@ func init() {
 }
 
 func switchRun(branch string) error {
-	wtPath, err := gitClient.ResolveWorktree(branch)
+	wtPath, err := gitClient.ResolveWorktree(repoRoot, branch)
 	if err != nil {
 		return err
 	}

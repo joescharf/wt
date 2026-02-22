@@ -23,8 +23,9 @@ var (
 	claudeTrust *claude.TrustManager
 	output      *ui.UI
 
-	verbose bool
-	dryRun  bool
+	verbose  bool
+	dryRun   bool
+	repoRoot string // resolved once from CWD at startup
 )
 
 var rootCmd = &cobra.Command{
@@ -106,6 +107,11 @@ func initDeps() {
 
 	if claudePath, err := claude.DefaultPath(); err == nil {
 		claudeTrust = claude.NewTrustManager(claudePath)
+	}
+
+	// Resolve repo root from CWD once at startup
+	if root, err := gitClient.RepoRoot("."); err == nil {
+		repoRoot = root
 	}
 }
 

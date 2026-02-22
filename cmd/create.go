@@ -39,12 +39,12 @@ func init() {
 }
 
 func createRun(branch string) error {
-	repoName, err := gitClient.RepoName()
+	repoName, err := gitClient.RepoName(repoRoot)
 	if err != nil {
 		return err
 	}
 
-	wtDir, err := gitClient.WorktreesDir()
+	wtDir, err := gitClient.WorktreesDir(repoRoot)
 	if err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func createRun(branch string) error {
 	}
 
 	// Check if branch already exists (auto-detect)
-	branchExists, err := gitClient.BranchExists(branch)
+	branchExists, err := gitClient.BranchExists(repoRoot, branch)
 	if err != nil {
 		return err
 	}
@@ -105,10 +105,10 @@ func createRun(branch string) error {
 	// Create worktree
 	if useExisting {
 		output.Info("Creating worktree from existing branch '%s'", branch)
-		err = gitClient.WorktreeAdd(wtPath, branch, "", false)
+		err = gitClient.WorktreeAdd(repoRoot, wtPath, branch, "", false)
 	} else {
 		output.Info("Creating worktree with new branch '%s' from '%s'", branch, baseBranch)
-		err = gitClient.WorktreeAdd(wtPath, branch, baseBranch, true)
+		err = gitClient.WorktreeAdd(repoRoot, wtPath, branch, baseBranch, true)
 	}
 	if err != nil {
 		return err

@@ -33,12 +33,12 @@ func init() {
 // openRun is the core logic for opening/focusing an iTerm2 window.
 // Exported for reuse by create and root shorthand.
 func openRun(branch string) error {
-	repoName, err := gitClient.RepoName()
+	repoName, err := gitClient.RepoName(repoRoot)
 	if err != nil {
 		return err
 	}
 
-	wtPath, err := gitClient.ResolveWorktree(branch)
+	wtPath, err := gitClient.ResolveWorktree(repoRoot, branch)
 	if err != nil {
 		// Worktree not found — offer to create it
 		output.Warning("Worktree not found: %s", branch)

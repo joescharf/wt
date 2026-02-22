@@ -31,11 +31,7 @@ func init() {
 }
 
 func listRun() error {
-	repoName, err := gitClient.RepoName()
-	if err != nil {
-		return err
-	}
-	repoRoot, err := gitClient.RepoRoot()
+	repoName, err := gitClient.RepoName(repoRoot)
 	if err != nil {
 		return err
 	}
@@ -51,7 +47,7 @@ func listRun() error {
 
 	fmt.Fprintf(output.Out, "Worktrees for %s\n\n", ui.Cyan(repoName))
 
-	worktrees, err := gitClient.WorktreeList()
+	worktrees, err := gitClient.WorktreeList(repoRoot)
 	if err != nil {
 		return err
 	}
@@ -59,7 +55,7 @@ func listRun() error {
 	termWidth := ui.TermWidth()
 	baseBranch := viper.GetString("base_branch")
 
-	wtDir, err := gitClient.WorktreesDir()
+	wtDir, err := gitClient.WorktreesDir(repoRoot)
 	if err != nil {
 		output.VerboseLog("Could not get worktrees dir: %v", err)
 	}
@@ -237,4 +233,3 @@ func worktreeSource(wtPath, standardDir string, ws *state.WorktreeState) string 
 	}
 	return "external"
 }
-

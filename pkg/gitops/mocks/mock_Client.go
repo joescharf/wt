@@ -20,17 +20,17 @@ func (_m *MockClient) EXPECT() *MockClient_Expecter {
 	return &MockClient_Expecter{mock: &_m.Mock}
 }
 
-// BranchDelete provides a mock function with given fields: branch, force
-func (_m *MockClient) BranchDelete(branch string, force bool) error {
-	ret := _m.Called(branch, force)
+// BranchDelete provides a mock function with given fields: repoPath, branch, force
+func (_m *MockClient) BranchDelete(repoPath string, branch string, force bool) error {
+	ret := _m.Called(repoPath, branch, force)
 
 	if len(ret) == 0 {
 		panic("no return value specified for BranchDelete")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, bool) error); ok {
-		r0 = rf(branch, force)
+	if rf, ok := ret.Get(0).(func(string, string, bool) error); ok {
+		r0 = rf(repoPath, branch, force)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -44,15 +44,16 @@ type MockClient_BranchDelete_Call struct {
 }
 
 // BranchDelete is a helper method to define mock.On call
+//   - repoPath string
 //   - branch string
 //   - force bool
-func (_e *MockClient_Expecter) BranchDelete(branch interface{}, force interface{}) *MockClient_BranchDelete_Call {
-	return &MockClient_BranchDelete_Call{Call: _e.mock.On("BranchDelete", branch, force)}
+func (_e *MockClient_Expecter) BranchDelete(repoPath interface{}, branch interface{}, force interface{}) *MockClient_BranchDelete_Call {
+	return &MockClient_BranchDelete_Call{Call: _e.mock.On("BranchDelete", repoPath, branch, force)}
 }
 
-func (_c *MockClient_BranchDelete_Call) Run(run func(branch string, force bool)) *MockClient_BranchDelete_Call {
+func (_c *MockClient_BranchDelete_Call) Run(run func(repoPath string, branch string, force bool)) *MockClient_BranchDelete_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(bool))
+		run(args[0].(string), args[1].(string), args[2].(bool))
 	})
 	return _c
 }
@@ -62,14 +63,14 @@ func (_c *MockClient_BranchDelete_Call) Return(_a0 error) *MockClient_BranchDele
 	return _c
 }
 
-func (_c *MockClient_BranchDelete_Call) RunAndReturn(run func(string, bool) error) *MockClient_BranchDelete_Call {
+func (_c *MockClient_BranchDelete_Call) RunAndReturn(run func(string, string, bool) error) *MockClient_BranchDelete_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// BranchExists provides a mock function with given fields: branch
-func (_m *MockClient) BranchExists(branch string) (bool, error) {
-	ret := _m.Called(branch)
+// BranchExists provides a mock function with given fields: repoPath, branch
+func (_m *MockClient) BranchExists(repoPath string, branch string) (bool, error) {
+	ret := _m.Called(repoPath, branch)
 
 	if len(ret) == 0 {
 		panic("no return value specified for BranchExists")
@@ -77,17 +78,17 @@ func (_m *MockClient) BranchExists(branch string) (bool, error) {
 
 	var r0 bool
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string) (bool, error)); ok {
-		return rf(branch)
+	if rf, ok := ret.Get(0).(func(string, string) (bool, error)); ok {
+		return rf(repoPath, branch)
 	}
-	if rf, ok := ret.Get(0).(func(string) bool); ok {
-		r0 = rf(branch)
+	if rf, ok := ret.Get(0).(func(string, string) bool); ok {
+		r0 = rf(repoPath, branch)
 	} else {
 		r0 = ret.Get(0).(bool)
 	}
 
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(branch)
+	if rf, ok := ret.Get(1).(func(string, string) error); ok {
+		r1 = rf(repoPath, branch)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -101,14 +102,15 @@ type MockClient_BranchExists_Call struct {
 }
 
 // BranchExists is a helper method to define mock.On call
+//   - repoPath string
 //   - branch string
-func (_e *MockClient_Expecter) BranchExists(branch interface{}) *MockClient_BranchExists_Call {
-	return &MockClient_BranchExists_Call{Call: _e.mock.On("BranchExists", branch)}
+func (_e *MockClient_Expecter) BranchExists(repoPath interface{}, branch interface{}) *MockClient_BranchExists_Call {
+	return &MockClient_BranchExists_Call{Call: _e.mock.On("BranchExists", repoPath, branch)}
 }
 
-func (_c *MockClient_BranchExists_Call) Run(run func(branch string)) *MockClient_BranchExists_Call {
+func (_c *MockClient_BranchExists_Call) Run(run func(repoPath string, branch string)) *MockClient_BranchExists_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(string), args[1].(string))
 	})
 	return _c
 }
@@ -118,14 +120,14 @@ func (_c *MockClient_BranchExists_Call) Return(_a0 bool, _a1 error) *MockClient_
 	return _c
 }
 
-func (_c *MockClient_BranchExists_Call) RunAndReturn(run func(string) (bool, error)) *MockClient_BranchExists_Call {
+func (_c *MockClient_BranchExists_Call) RunAndReturn(run func(string, string) (bool, error)) *MockClient_BranchExists_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// BranchList provides a mock function with no fields
-func (_m *MockClient) BranchList() ([]string, error) {
-	ret := _m.Called()
+// BranchList provides a mock function with given fields: repoPath
+func (_m *MockClient) BranchList(repoPath string) ([]string, error) {
+	ret := _m.Called(repoPath)
 
 	if len(ret) == 0 {
 		panic("no return value specified for BranchList")
@@ -133,19 +135,19 @@ func (_m *MockClient) BranchList() ([]string, error) {
 
 	var r0 []string
 	var r1 error
-	if rf, ok := ret.Get(0).(func() ([]string, error)); ok {
-		return rf()
+	if rf, ok := ret.Get(0).(func(string) ([]string, error)); ok {
+		return rf(repoPath)
 	}
-	if rf, ok := ret.Get(0).(func() []string); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(string) []string); ok {
+		r0 = rf(repoPath)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]string)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(repoPath)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -159,13 +161,14 @@ type MockClient_BranchList_Call struct {
 }
 
 // BranchList is a helper method to define mock.On call
-func (_e *MockClient_Expecter) BranchList() *MockClient_BranchList_Call {
-	return &MockClient_BranchList_Call{Call: _e.mock.On("BranchList")}
+//   - repoPath string
+func (_e *MockClient_Expecter) BranchList(repoPath interface{}) *MockClient_BranchList_Call {
+	return &MockClient_BranchList_Call{Call: _e.mock.On("BranchList", repoPath)}
 }
 
-func (_c *MockClient_BranchList_Call) Run(run func()) *MockClient_BranchList_Call {
+func (_c *MockClient_BranchList_Call) Run(run func(repoPath string)) *MockClient_BranchList_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(string))
 	})
 	return _c
 }
@@ -175,7 +178,7 @@ func (_c *MockClient_BranchList_Call) Return(_a0 []string, _a1 error) *MockClien
 	return _c
 }
 
-func (_c *MockClient_BranchList_Call) RunAndReturn(run func() ([]string, error)) *MockClient_BranchList_Call {
+func (_c *MockClient_BranchList_Call) RunAndReturn(run func(string) ([]string, error)) *MockClient_BranchList_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -452,9 +455,9 @@ func (_c *MockClient_HasConflicts_Call) RunAndReturn(run func(string) (bool, err
 	return _c
 }
 
-// HasRemote provides a mock function with no fields
-func (_m *MockClient) HasRemote() (bool, error) {
-	ret := _m.Called()
+// HasRemote provides a mock function with given fields: repoPath
+func (_m *MockClient) HasRemote(repoPath string) (bool, error) {
+	ret := _m.Called(repoPath)
 
 	if len(ret) == 0 {
 		panic("no return value specified for HasRemote")
@@ -462,17 +465,17 @@ func (_m *MockClient) HasRemote() (bool, error) {
 
 	var r0 bool
 	var r1 error
-	if rf, ok := ret.Get(0).(func() (bool, error)); ok {
-		return rf()
+	if rf, ok := ret.Get(0).(func(string) (bool, error)); ok {
+		return rf(repoPath)
 	}
-	if rf, ok := ret.Get(0).(func() bool); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(string) bool); ok {
+		r0 = rf(repoPath)
 	} else {
 		r0 = ret.Get(0).(bool)
 	}
 
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(repoPath)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -486,13 +489,14 @@ type MockClient_HasRemote_Call struct {
 }
 
 // HasRemote is a helper method to define mock.On call
-func (_e *MockClient_Expecter) HasRemote() *MockClient_HasRemote_Call {
-	return &MockClient_HasRemote_Call{Call: _e.mock.On("HasRemote")}
+//   - repoPath string
+func (_e *MockClient_Expecter) HasRemote(repoPath interface{}) *MockClient_HasRemote_Call {
+	return &MockClient_HasRemote_Call{Call: _e.mock.On("HasRemote", repoPath)}
 }
 
-func (_c *MockClient_HasRemote_Call) Run(run func()) *MockClient_HasRemote_Call {
+func (_c *MockClient_HasRemote_Call) Run(run func(repoPath string)) *MockClient_HasRemote_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(string))
 	})
 	return _c
 }
@@ -502,7 +506,7 @@ func (_c *MockClient_HasRemote_Call) Return(_a0 bool, _a1 error) *MockClient_Has
 	return _c
 }
 
-func (_c *MockClient_HasRemote_Call) RunAndReturn(run func() (bool, error)) *MockClient_HasRemote_Call {
+func (_c *MockClient_HasRemote_Call) RunAndReturn(run func(string) (bool, error)) *MockClient_HasRemote_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1058,9 +1062,9 @@ func (_c *MockClient_RebaseContinue_Call) RunAndReturn(run func(string) error) *
 	return _c
 }
 
-// RepoName provides a mock function with no fields
-func (_m *MockClient) RepoName() (string, error) {
-	ret := _m.Called()
+// RepoName provides a mock function with given fields: repoPath
+func (_m *MockClient) RepoName(repoPath string) (string, error) {
+	ret := _m.Called(repoPath)
 
 	if len(ret) == 0 {
 		panic("no return value specified for RepoName")
@@ -1068,17 +1072,17 @@ func (_m *MockClient) RepoName() (string, error) {
 
 	var r0 string
 	var r1 error
-	if rf, ok := ret.Get(0).(func() (string, error)); ok {
-		return rf()
+	if rf, ok := ret.Get(0).(func(string) (string, error)); ok {
+		return rf(repoPath)
 	}
-	if rf, ok := ret.Get(0).(func() string); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(string) string); ok {
+		r0 = rf(repoPath)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(repoPath)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -1092,13 +1096,14 @@ type MockClient_RepoName_Call struct {
 }
 
 // RepoName is a helper method to define mock.On call
-func (_e *MockClient_Expecter) RepoName() *MockClient_RepoName_Call {
-	return &MockClient_RepoName_Call{Call: _e.mock.On("RepoName")}
+//   - repoPath string
+func (_e *MockClient_Expecter) RepoName(repoPath interface{}) *MockClient_RepoName_Call {
+	return &MockClient_RepoName_Call{Call: _e.mock.On("RepoName", repoPath)}
 }
 
-func (_c *MockClient_RepoName_Call) Run(run func()) *MockClient_RepoName_Call {
+func (_c *MockClient_RepoName_Call) Run(run func(repoPath string)) *MockClient_RepoName_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(string))
 	})
 	return _c
 }
@@ -1108,14 +1113,14 @@ func (_c *MockClient_RepoName_Call) Return(_a0 string, _a1 error) *MockClient_Re
 	return _c
 }
 
-func (_c *MockClient_RepoName_Call) RunAndReturn(run func() (string, error)) *MockClient_RepoName_Call {
+func (_c *MockClient_RepoName_Call) RunAndReturn(run func(string) (string, error)) *MockClient_RepoName_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// RepoRoot provides a mock function with no fields
-func (_m *MockClient) RepoRoot() (string, error) {
-	ret := _m.Called()
+// RepoRoot provides a mock function with given fields: repoPath
+func (_m *MockClient) RepoRoot(repoPath string) (string, error) {
+	ret := _m.Called(repoPath)
 
 	if len(ret) == 0 {
 		panic("no return value specified for RepoRoot")
@@ -1123,17 +1128,17 @@ func (_m *MockClient) RepoRoot() (string, error) {
 
 	var r0 string
 	var r1 error
-	if rf, ok := ret.Get(0).(func() (string, error)); ok {
-		return rf()
+	if rf, ok := ret.Get(0).(func(string) (string, error)); ok {
+		return rf(repoPath)
 	}
-	if rf, ok := ret.Get(0).(func() string); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(string) string); ok {
+		r0 = rf(repoPath)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(repoPath)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -1147,13 +1152,14 @@ type MockClient_RepoRoot_Call struct {
 }
 
 // RepoRoot is a helper method to define mock.On call
-func (_e *MockClient_Expecter) RepoRoot() *MockClient_RepoRoot_Call {
-	return &MockClient_RepoRoot_Call{Call: _e.mock.On("RepoRoot")}
+//   - repoPath string
+func (_e *MockClient_Expecter) RepoRoot(repoPath interface{}) *MockClient_RepoRoot_Call {
+	return &MockClient_RepoRoot_Call{Call: _e.mock.On("RepoRoot", repoPath)}
 }
 
-func (_c *MockClient_RepoRoot_Call) Run(run func()) *MockClient_RepoRoot_Call {
+func (_c *MockClient_RepoRoot_Call) Run(run func(repoPath string)) *MockClient_RepoRoot_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(string))
 	})
 	return _c
 }
@@ -1163,14 +1169,14 @@ func (_c *MockClient_RepoRoot_Call) Return(_a0 string, _a1 error) *MockClient_Re
 	return _c
 }
 
-func (_c *MockClient_RepoRoot_Call) RunAndReturn(run func() (string, error)) *MockClient_RepoRoot_Call {
+func (_c *MockClient_RepoRoot_Call) RunAndReturn(run func(string) (string, error)) *MockClient_RepoRoot_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// ResolveWorktree provides a mock function with given fields: input
-func (_m *MockClient) ResolveWorktree(input string) (string, error) {
-	ret := _m.Called(input)
+// ResolveWorktree provides a mock function with given fields: repoPath, input
+func (_m *MockClient) ResolveWorktree(repoPath string, input string) (string, error) {
+	ret := _m.Called(repoPath, input)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ResolveWorktree")
@@ -1178,17 +1184,17 @@ func (_m *MockClient) ResolveWorktree(input string) (string, error) {
 
 	var r0 string
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string) (string, error)); ok {
-		return rf(input)
+	if rf, ok := ret.Get(0).(func(string, string) (string, error)); ok {
+		return rf(repoPath, input)
 	}
-	if rf, ok := ret.Get(0).(func(string) string); ok {
-		r0 = rf(input)
+	if rf, ok := ret.Get(0).(func(string, string) string); ok {
+		r0 = rf(repoPath, input)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(input)
+	if rf, ok := ret.Get(1).(func(string, string) error); ok {
+		r1 = rf(repoPath, input)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -1202,14 +1208,15 @@ type MockClient_ResolveWorktree_Call struct {
 }
 
 // ResolveWorktree is a helper method to define mock.On call
+//   - repoPath string
 //   - input string
-func (_e *MockClient_Expecter) ResolveWorktree(input interface{}) *MockClient_ResolveWorktree_Call {
-	return &MockClient_ResolveWorktree_Call{Call: _e.mock.On("ResolveWorktree", input)}
+func (_e *MockClient_Expecter) ResolveWorktree(repoPath interface{}, input interface{}) *MockClient_ResolveWorktree_Call {
+	return &MockClient_ResolveWorktree_Call{Call: _e.mock.On("ResolveWorktree", repoPath, input)}
 }
 
-func (_c *MockClient_ResolveWorktree_Call) Run(run func(input string)) *MockClient_ResolveWorktree_Call {
+func (_c *MockClient_ResolveWorktree_Call) Run(run func(repoPath string, input string)) *MockClient_ResolveWorktree_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(string), args[1].(string))
 	})
 	return _c
 }
@@ -1219,22 +1226,22 @@ func (_c *MockClient_ResolveWorktree_Call) Return(_a0 string, _a1 error) *MockCl
 	return _c
 }
 
-func (_c *MockClient_ResolveWorktree_Call) RunAndReturn(run func(string) (string, error)) *MockClient_ResolveWorktree_Call {
+func (_c *MockClient_ResolveWorktree_Call) RunAndReturn(run func(string, string) (string, error)) *MockClient_ResolveWorktree_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// WorktreeAdd provides a mock function with given fields: path, branch, base, newBranch
-func (_m *MockClient) WorktreeAdd(path string, branch string, base string, newBranch bool) error {
-	ret := _m.Called(path, branch, base, newBranch)
+// WorktreeAdd provides a mock function with given fields: repoPath, wtPath, branch, base, newBranch
+func (_m *MockClient) WorktreeAdd(repoPath string, wtPath string, branch string, base string, newBranch bool) error {
+	ret := _m.Called(repoPath, wtPath, branch, base, newBranch)
 
 	if len(ret) == 0 {
 		panic("no return value specified for WorktreeAdd")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, string, string, bool) error); ok {
-		r0 = rf(path, branch, base, newBranch)
+	if rf, ok := ret.Get(0).(func(string, string, string, string, bool) error); ok {
+		r0 = rf(repoPath, wtPath, branch, base, newBranch)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -1248,17 +1255,18 @@ type MockClient_WorktreeAdd_Call struct {
 }
 
 // WorktreeAdd is a helper method to define mock.On call
-//   - path string
+//   - repoPath string
+//   - wtPath string
 //   - branch string
 //   - base string
 //   - newBranch bool
-func (_e *MockClient_Expecter) WorktreeAdd(path interface{}, branch interface{}, base interface{}, newBranch interface{}) *MockClient_WorktreeAdd_Call {
-	return &MockClient_WorktreeAdd_Call{Call: _e.mock.On("WorktreeAdd", path, branch, base, newBranch)}
+func (_e *MockClient_Expecter) WorktreeAdd(repoPath interface{}, wtPath interface{}, branch interface{}, base interface{}, newBranch interface{}) *MockClient_WorktreeAdd_Call {
+	return &MockClient_WorktreeAdd_Call{Call: _e.mock.On("WorktreeAdd", repoPath, wtPath, branch, base, newBranch)}
 }
 
-func (_c *MockClient_WorktreeAdd_Call) Run(run func(path string, branch string, base string, newBranch bool)) *MockClient_WorktreeAdd_Call {
+func (_c *MockClient_WorktreeAdd_Call) Run(run func(repoPath string, wtPath string, branch string, base string, newBranch bool)) *MockClient_WorktreeAdd_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(string), args[2].(string), args[3].(bool))
+		run(args[0].(string), args[1].(string), args[2].(string), args[3].(string), args[4].(bool))
 	})
 	return _c
 }
@@ -1268,14 +1276,14 @@ func (_c *MockClient_WorktreeAdd_Call) Return(_a0 error) *MockClient_WorktreeAdd
 	return _c
 }
 
-func (_c *MockClient_WorktreeAdd_Call) RunAndReturn(run func(string, string, string, bool) error) *MockClient_WorktreeAdd_Call {
+func (_c *MockClient_WorktreeAdd_Call) RunAndReturn(run func(string, string, string, string, bool) error) *MockClient_WorktreeAdd_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// WorktreeList provides a mock function with no fields
-func (_m *MockClient) WorktreeList() ([]gitops.WorktreeInfo, error) {
-	ret := _m.Called()
+// WorktreeList provides a mock function with given fields: repoPath
+func (_m *MockClient) WorktreeList(repoPath string) ([]gitops.WorktreeInfo, error) {
+	ret := _m.Called(repoPath)
 
 	if len(ret) == 0 {
 		panic("no return value specified for WorktreeList")
@@ -1283,19 +1291,19 @@ func (_m *MockClient) WorktreeList() ([]gitops.WorktreeInfo, error) {
 
 	var r0 []gitops.WorktreeInfo
 	var r1 error
-	if rf, ok := ret.Get(0).(func() ([]gitops.WorktreeInfo, error)); ok {
-		return rf()
+	if rf, ok := ret.Get(0).(func(string) ([]gitops.WorktreeInfo, error)); ok {
+		return rf(repoPath)
 	}
-	if rf, ok := ret.Get(0).(func() []gitops.WorktreeInfo); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(string) []gitops.WorktreeInfo); ok {
+		r0 = rf(repoPath)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]gitops.WorktreeInfo)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(repoPath)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -1309,13 +1317,14 @@ type MockClient_WorktreeList_Call struct {
 }
 
 // WorktreeList is a helper method to define mock.On call
-func (_e *MockClient_Expecter) WorktreeList() *MockClient_WorktreeList_Call {
-	return &MockClient_WorktreeList_Call{Call: _e.mock.On("WorktreeList")}
+//   - repoPath string
+func (_e *MockClient_Expecter) WorktreeList(repoPath interface{}) *MockClient_WorktreeList_Call {
+	return &MockClient_WorktreeList_Call{Call: _e.mock.On("WorktreeList", repoPath)}
 }
 
-func (_c *MockClient_WorktreeList_Call) Run(run func()) *MockClient_WorktreeList_Call {
+func (_c *MockClient_WorktreeList_Call) Run(run func(repoPath string)) *MockClient_WorktreeList_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(string))
 	})
 	return _c
 }
@@ -1325,22 +1334,22 @@ func (_c *MockClient_WorktreeList_Call) Return(_a0 []gitops.WorktreeInfo, _a1 er
 	return _c
 }
 
-func (_c *MockClient_WorktreeList_Call) RunAndReturn(run func() ([]gitops.WorktreeInfo, error)) *MockClient_WorktreeList_Call {
+func (_c *MockClient_WorktreeList_Call) RunAndReturn(run func(string) ([]gitops.WorktreeInfo, error)) *MockClient_WorktreeList_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// WorktreePrune provides a mock function with no fields
-func (_m *MockClient) WorktreePrune() error {
-	ret := _m.Called()
+// WorktreePrune provides a mock function with given fields: repoPath
+func (_m *MockClient) WorktreePrune(repoPath string) error {
+	ret := _m.Called(repoPath)
 
 	if len(ret) == 0 {
 		panic("no return value specified for WorktreePrune")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func() error); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(string) error); ok {
+		r0 = rf(repoPath)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -1354,13 +1363,14 @@ type MockClient_WorktreePrune_Call struct {
 }
 
 // WorktreePrune is a helper method to define mock.On call
-func (_e *MockClient_Expecter) WorktreePrune() *MockClient_WorktreePrune_Call {
-	return &MockClient_WorktreePrune_Call{Call: _e.mock.On("WorktreePrune")}
+//   - repoPath string
+func (_e *MockClient_Expecter) WorktreePrune(repoPath interface{}) *MockClient_WorktreePrune_Call {
+	return &MockClient_WorktreePrune_Call{Call: _e.mock.On("WorktreePrune", repoPath)}
 }
 
-func (_c *MockClient_WorktreePrune_Call) Run(run func()) *MockClient_WorktreePrune_Call {
+func (_c *MockClient_WorktreePrune_Call) Run(run func(repoPath string)) *MockClient_WorktreePrune_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(string))
 	})
 	return _c
 }
@@ -1370,22 +1380,22 @@ func (_c *MockClient_WorktreePrune_Call) Return(_a0 error) *MockClient_WorktreeP
 	return _c
 }
 
-func (_c *MockClient_WorktreePrune_Call) RunAndReturn(run func() error) *MockClient_WorktreePrune_Call {
+func (_c *MockClient_WorktreePrune_Call) RunAndReturn(run func(string) error) *MockClient_WorktreePrune_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// WorktreeRemove provides a mock function with given fields: path, force
-func (_m *MockClient) WorktreeRemove(path string, force bool) error {
-	ret := _m.Called(path, force)
+// WorktreeRemove provides a mock function with given fields: repoPath, wtPath, force
+func (_m *MockClient) WorktreeRemove(repoPath string, wtPath string, force bool) error {
+	ret := _m.Called(repoPath, wtPath, force)
 
 	if len(ret) == 0 {
 		panic("no return value specified for WorktreeRemove")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, bool) error); ok {
-		r0 = rf(path, force)
+	if rf, ok := ret.Get(0).(func(string, string, bool) error); ok {
+		r0 = rf(repoPath, wtPath, force)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -1399,15 +1409,16 @@ type MockClient_WorktreeRemove_Call struct {
 }
 
 // WorktreeRemove is a helper method to define mock.On call
-//   - path string
+//   - repoPath string
+//   - wtPath string
 //   - force bool
-func (_e *MockClient_Expecter) WorktreeRemove(path interface{}, force interface{}) *MockClient_WorktreeRemove_Call {
-	return &MockClient_WorktreeRemove_Call{Call: _e.mock.On("WorktreeRemove", path, force)}
+func (_e *MockClient_Expecter) WorktreeRemove(repoPath interface{}, wtPath interface{}, force interface{}) *MockClient_WorktreeRemove_Call {
+	return &MockClient_WorktreeRemove_Call{Call: _e.mock.On("WorktreeRemove", repoPath, wtPath, force)}
 }
 
-func (_c *MockClient_WorktreeRemove_Call) Run(run func(path string, force bool)) *MockClient_WorktreeRemove_Call {
+func (_c *MockClient_WorktreeRemove_Call) Run(run func(repoPath string, wtPath string, force bool)) *MockClient_WorktreeRemove_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(bool))
+		run(args[0].(string), args[1].(string), args[2].(bool))
 	})
 	return _c
 }
@@ -1417,14 +1428,14 @@ func (_c *MockClient_WorktreeRemove_Call) Return(_a0 error) *MockClient_Worktree
 	return _c
 }
 
-func (_c *MockClient_WorktreeRemove_Call) RunAndReturn(run func(string, bool) error) *MockClient_WorktreeRemove_Call {
+func (_c *MockClient_WorktreeRemove_Call) RunAndReturn(run func(string, string, bool) error) *MockClient_WorktreeRemove_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// WorktreesDir provides a mock function with no fields
-func (_m *MockClient) WorktreesDir() (string, error) {
-	ret := _m.Called()
+// WorktreesDir provides a mock function with given fields: repoPath
+func (_m *MockClient) WorktreesDir(repoPath string) (string, error) {
+	ret := _m.Called(repoPath)
 
 	if len(ret) == 0 {
 		panic("no return value specified for WorktreesDir")
@@ -1432,17 +1443,17 @@ func (_m *MockClient) WorktreesDir() (string, error) {
 
 	var r0 string
 	var r1 error
-	if rf, ok := ret.Get(0).(func() (string, error)); ok {
-		return rf()
+	if rf, ok := ret.Get(0).(func(string) (string, error)); ok {
+		return rf(repoPath)
 	}
-	if rf, ok := ret.Get(0).(func() string); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(string) string); ok {
+		r0 = rf(repoPath)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(repoPath)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -1456,13 +1467,14 @@ type MockClient_WorktreesDir_Call struct {
 }
 
 // WorktreesDir is a helper method to define mock.On call
-func (_e *MockClient_Expecter) WorktreesDir() *MockClient_WorktreesDir_Call {
-	return &MockClient_WorktreesDir_Call{Call: _e.mock.On("WorktreesDir")}
+//   - repoPath string
+func (_e *MockClient_Expecter) WorktreesDir(repoPath interface{}) *MockClient_WorktreesDir_Call {
+	return &MockClient_WorktreesDir_Call{Call: _e.mock.On("WorktreesDir", repoPath)}
 }
 
-func (_c *MockClient_WorktreesDir_Call) Run(run func()) *MockClient_WorktreesDir_Call {
+func (_c *MockClient_WorktreesDir_Call) Run(run func(repoPath string)) *MockClient_WorktreesDir_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(string))
 	})
 	return _c
 }
@@ -1472,7 +1484,7 @@ func (_c *MockClient_WorktreesDir_Call) Return(_a0 string, _a1 error) *MockClien
 	return _c
 }
 
-func (_c *MockClient_WorktreesDir_Call) RunAndReturn(run func() (string, error)) *MockClient_WorktreesDir_Call {
+func (_c *MockClient_WorktreesDir_Call) RunAndReturn(run func(string) (string, error)) *MockClient_WorktreesDir_Call {
 	_c.Call.Return(run)
 	return _c
 }

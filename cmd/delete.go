@@ -125,7 +125,7 @@ func cleanupWorktree(wtPath, branchName string, force, deleteBranch bool) error 
 		output.DryRunMsg("Would remove git worktree: %s", wtPath)
 	} else {
 		output.Info("Removing git worktree")
-		if err := gitClient.WorktreeRemove(wtPath, force); err != nil {
+		if err := gitClient.WorktreeRemove(repoRoot, wtPath, force); err != nil {
 			return err
 		}
 		output.Success("Removed git worktree")
@@ -140,10 +140,10 @@ func cleanupWorktree(wtPath, branchName string, force, deleteBranch bool) error 
 		if dryRun {
 			output.DryRunMsg("Would delete branch '%s'", branchName)
 		} else {
-			err := gitClient.BranchDelete(branchName, false)
+			err := gitClient.BranchDelete(repoRoot, branchName, false)
 			if err != nil {
 				if force {
-					err = gitClient.BranchDelete(branchName, true)
+					err = gitClient.BranchDelete(repoRoot, branchName, true)
 					if err == nil {
 						output.Success("Force-deleted branch '%s'", branchName)
 					} else {
@@ -175,7 +175,7 @@ func cleanupWorktree(wtPath, branchName string, force, deleteBranch bool) error 
 }
 
 func deleteRun(branch string) error {
-	wtPath, err := gitClient.ResolveWorktree(branch)
+	wtPath, err := gitClient.ResolveWorktree(repoRoot, branch)
 	if err != nil {
 		return err
 	}
@@ -199,12 +199,7 @@ func deleteRun(branch string) error {
 }
 
 func deleteAllRun() error {
-	repoRoot, err := gitClient.RepoRoot()
-	if err != nil {
-		return err
-	}
-
-	worktrees, err := gitClient.WorktreeList()
+	worktrees, err := gitClient.WorktreeList(repoRoot)
 	if err != nil {
 		return err
 	}
@@ -251,7 +246,7 @@ func deleteAllRun() error {
 		}
 
 		// Remove worktree
-		if err := gitClient.WorktreeRemove(wt.Path, deleteForce); err != nil {
+		if err := gitClient.WorktreeRemove(repoRoot, wt.Path, deleteForce); err != nil {
 			output.Warning("Failed to remove %s: %v", dirname, err)
 			continue
 		}
@@ -262,7 +257,7 @@ func deleteAllRun() error {
 			if ws != nil && ws.Branch != "" {
 				branchName = ws.Branch
 			}
-			if err := gitClient.BranchDelete(branchName, deleteForce); err != nil {
+			if err := gitClient.BranchDelete(repoRoot, branchName, deleteForce); err != nil {
 				output.Warning("Could not delete branch '%s': %v", branchName, err)
 			}
 		}
@@ -276,7 +271,7 @@ func deleteAllRun() error {
 	}
 
 	// Run git worktree prune after bulk delete
-	if err := gitClient.WorktreePrune(); err != nil {
+	if err := gitClient.WorktreePrune(repoRoot); err != nil {
 		output.Warning("Failed to run git worktree prune: %v", err)
 	}
 
