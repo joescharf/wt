@@ -37,7 +37,7 @@ func TestStateRoundTrip(t *testing.T) {
 	assert.Equal(t, "feature/auth", got.Branch)
 	assert.Equal(t, "session-123", got.ClaudeSessionID)
 	assert.Equal(t, "session-456", got.ShellSessionID)
-	assert.Equal(t, now.Unix(), got.CreatedAt.Time.Unix())
+	assert.Equal(t, now.Unix(), got.CreatedAt.Unix())
 
 	// Verify nil for missing entry
 	missing, err := mgr.GetWorktree("/nonexistent")

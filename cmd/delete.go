@@ -27,16 +27,16 @@ var promptFunc = defaultPrompt
 var promptDefaultYes = defaultPromptYes
 
 func defaultPrompt(msg string) bool {
-	fmt.Fprintf(output.ErrOut, "%s [y/N] ", msg)
+	_, _ = fmt.Fprintf(output.ErrOut, "%s [y/N] ", msg)
 	var answer string
-	fmt.Fscanln(os.Stdin, &answer)
+	_, _ = fmt.Fscanln(os.Stdin, &answer)
 	return strings.ToLower(strings.TrimSpace(answer)) == "y"
 }
 
 func defaultPromptYes(msg string) bool {
-	fmt.Fprintf(output.ErrOut, "%s [Y/n] ", msg)
+	_, _ = fmt.Fprintf(output.ErrOut, "%s [Y/n] ", msg)
 	var answer string
-	fmt.Fscanln(os.Stdin, &answer)
+	_, _ = fmt.Fscanln(os.Stdin, &answer)
 	answer = strings.ToLower(strings.TrimSpace(answer))
 	return answer == "" || answer == "y"
 }
@@ -141,7 +141,7 @@ func deleteRun(branch string) error {
 		return err
 	}
 
-	fmt.Fprintln(output.Out)
+	_, _ = fmt.Fprintln(output.Out)
 	return nil
 }
 
@@ -178,7 +178,7 @@ func deleteAllRun() error {
 	}
 
 	if deleted > 0 {
-		fmt.Fprintln(output.Out)
+		_, _ = fmt.Fprintln(output.Out)
 	}
 	return nil
 }

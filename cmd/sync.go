@@ -40,7 +40,7 @@ func init() {
 	syncCmd.Flags().BoolVar(&syncAll, "all", false, "Sync all worktrees")
 	syncCmd.Flags().BoolVar(&syncRebase, "rebase", false, "Use rebase instead of merge")
 	syncCmd.Flags().BoolVar(&syncMerge, "merge", false, "Use merge (overrides config rebase default)")
-	syncCmd.RegisterFlagCompletionFunc("base", completeBranchNames)
+	_ = syncCmd.RegisterFlagCompletionFunc("base", completeBranchNames)
 	rootCmd.AddCommand(syncCmd)
 }
 
@@ -94,7 +94,7 @@ func syncAllRun() error {
 
 	// Print blank line before summary if there were results
 	if len(results) > 0 {
-		fmt.Fprintln(output.Out)
+		_, _ = fmt.Fprintln(output.Out)
 	}
 	return nil
 }

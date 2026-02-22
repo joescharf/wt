@@ -128,7 +128,7 @@ func (s *Server) handleList(ctx context.Context, request mcp.CallToolRequest) (*
 		}
 
 		age := ""
-		if ws != nil && !ws.CreatedAt.Time.IsZero() {
+		if ws != nil && !ws.CreatedAt.IsZero() {
 			age = formatAge(time.Since(ws.CreatedAt.Time))
 		}
 

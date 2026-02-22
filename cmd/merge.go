@@ -53,7 +53,7 @@ func init() {
 	mergeCmd.Flags().BoolVar(&mergeForce, "force", false, "Skip safety checks")
 	mergeCmd.Flags().BoolVar(&mergeRebase, "rebase", false, "Use rebase-then-fast-forward instead of merge")
 	mergeCmd.Flags().BoolVar(&mergeMerge, "merge", false, "Use merge (overrides config rebase default)")
-	mergeCmd.RegisterFlagCompletionFunc("base", completeBranchNames)
+	_ = mergeCmd.RegisterFlagCompletionFunc("base", completeBranchNames)
 	rootCmd.AddCommand(mergeCmd)
 }
 
@@ -107,9 +107,9 @@ func mergeRun(branch string) error {
 	}
 
 	if result.PRCreated && result.PRURL != "" {
-		fmt.Fprintln(output.Out, result.PRURL)
+		_, _ = fmt.Fprintln(output.Out, result.PRURL)
 	}
 
-	fmt.Fprintln(output.Out)
+	_, _ = fmt.Fprintln(output.Out)
 	return nil
 }

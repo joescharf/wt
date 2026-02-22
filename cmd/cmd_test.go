@@ -125,7 +125,7 @@ func TestCreate_NewBranch(t *testing.T) {
 	env.git.EXPECT().BranchExists(mock.Anything, "feature/auth").Return(false, nil)
 	env.git.EXPECT().WorktreeAdd(mock.Anything, wtPath, "feature/auth", "main", true).
 		Run(func(repoPath, path, branch, base string, newBranch bool) {
-			os.MkdirAll(path, 0755) // simulate worktree creation
+			_ = os.MkdirAll(path, 0755) // simulate worktree creation
 		}).Return(nil)
 
 	env.iterm.EXPECT().CreateWorktreeWindow(wtPath, "wt:myrepo:auth", false).
@@ -149,7 +149,7 @@ func TestCreate_ExistingWorktree(t *testing.T) {
 	env := setupTest(t)
 	wtDir := filepath.Join(env.dir, "repo.worktrees")
 	wtPath := filepath.Join(wtDir, "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
 	// lifecycle.Create calls: RepoName, WorktreesDir, detects dir exists, delegates to Open
 	// lifecycle.Open calls: RepoName, then CreateWorktreeWindow (no existing session)
@@ -177,7 +177,7 @@ func TestCreate_ExistingBranch(t *testing.T) {
 	env.git.EXPECT().BranchExists(mock.Anything, "feature/auth").Return(true, nil)
 	env.git.EXPECT().WorktreeAdd(mock.Anything, wtPath, "feature/auth", "", false).
 		Run(func(repoPath, path, branch, base string, newBranch bool) {
-			os.MkdirAll(path, 0755)
+			_ = os.MkdirAll(path, 0755)
 		}).Return(nil)
 
 	env.iterm.EXPECT().CreateWorktreeWindow(wtPath, "wt:myrepo:auth", false).
@@ -194,7 +194,7 @@ func TestCreate_ExistingBranch(t *testing.T) {
 func TestList_WithWorktrees(t *testing.T) {
 	env := setupTest(t)
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
 	env.git.EXPECT().RepoName(mock.Anything).Return("myrepo", nil)
 	env.git.EXPECT().WorktreesDir(mock.Anything).Return(filepath.Join(env.dir, "repo.worktrees"), nil)
@@ -204,12 +204,12 @@ func TestList_WithWorktrees(t *testing.T) {
 	}, nil)
 
 	// Set up state so we can check window status
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:            "myrepo",
 		Branch:          "feature/auth",
 		ClaudeSessionID: "c-123",
 		CreatedAt:       state.FlexTime{Time: time.Now().UTC().Add(-2 * time.Hour)},
-	})
+	}))
 
 	env.iterm.EXPECT().IsRunning().Return(true)
 	env.iterm.EXPECT().SessionExists("c-123").Return(true)
@@ -234,7 +234,7 @@ func TestList_WithWorktrees(t *testing.T) {
 func TestList_StatusDirty(t *testing.T) {
 	env := setupTest(t)
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
 	env.git.EXPECT().RepoName(mock.Anything).Return("myrepo", nil)
 	env.git.EXPECT().WorktreesDir(mock.Anything).Return(filepath.Join(env.dir, "repo.worktrees"), nil)
@@ -256,7 +256,7 @@ func TestList_StatusDirty(t *testing.T) {
 func TestList_StatusDirtyAndBehind(t *testing.T) {
 	env := setupTest(t)
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
 	env.git.EXPECT().RepoName(mock.Anything).Return("myrepo", nil)
 	env.git.EXPECT().WorktreesDir(mock.Anything).Return(filepath.Join(env.dir, "repo.worktrees"), nil)
@@ -280,7 +280,7 @@ func TestList_StatusDirtyAndBehind(t *testing.T) {
 func TestList_StatusClean(t *testing.T) {
 	env := setupTest(t)
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
 	env.git.EXPECT().RepoName(mock.Anything).Return("myrepo", nil)
 	env.git.EXPECT().WorktreesDir(mock.Anything).Return(filepath.Join(env.dir, "repo.worktrees"), nil)
@@ -302,7 +302,7 @@ func TestList_StatusClean(t *testing.T) {
 func TestList_StatusBehind(t *testing.T) {
 	env := setupTest(t)
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
 	env.git.EXPECT().RepoName(mock.Anything).Return("myrepo", nil)
 	env.git.EXPECT().WorktreesDir(mock.Anything).Return(filepath.Join(env.dir, "repo.worktrees"), nil)
@@ -324,7 +324,7 @@ func TestList_StatusBehind(t *testing.T) {
 func TestList_StatusAheadAndBehind(t *testing.T) {
 	env := setupTest(t)
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
 	env.git.EXPECT().RepoName(mock.Anything).Return("myrepo", nil)
 	env.git.EXPECT().WorktreesDir(mock.Anything).Return(filepath.Join(env.dir, "repo.worktrees"), nil)
@@ -349,10 +349,10 @@ func TestList_PrunesStaleState(t *testing.T) {
 	env := setupTest(t)
 
 	// Add state for a non-existent path
-	env.state.SetWorktree("/nonexistent/path", &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree("/nonexistent/path", &state.WorktreeState{
 		Repo:   "myrepo",
 		Branch: "stale",
-	})
+	}))
 
 	env.git.EXPECT().RepoName(mock.Anything).Return("myrepo", nil)
 	env.git.EXPECT().WorktreesDir(mock.Anything).Return(filepath.Join(env.dir, "repo.worktrees"), nil)
@@ -373,7 +373,7 @@ func TestList_PrunesStaleState(t *testing.T) {
 func TestList_StatusRebasing(t *testing.T) {
 	env := setupTest(t)
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
 	env.git.EXPECT().RepoName(mock.Anything).Return("myrepo", nil)
 	env.git.EXPECT().WorktreesDir(mock.Anything).Return(filepath.Join(env.dir, "repo.worktrees"), nil)
@@ -399,7 +399,7 @@ func TestList_StatusRebasing(t *testing.T) {
 func TestList_StatusMerging(t *testing.T) {
 	env := setupTest(t)
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
 	env.git.EXPECT().RepoName(mock.Anything).Return("myrepo", nil)
 	env.git.EXPECT().WorktreesDir(mock.Anything).Return(filepath.Join(env.dir, "repo.worktrees"), nil)
@@ -424,7 +424,7 @@ func TestList_StatusMerging(t *testing.T) {
 func TestList_StatusRebasingOnly(t *testing.T) {
 	env := setupTest(t)
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
 	env.git.EXPECT().RepoName(mock.Anything).Return("myrepo", nil)
 	env.git.EXPECT().WorktreesDir(mock.Anything).Return(filepath.Join(env.dir, "repo.worktrees"), nil)
@@ -450,18 +450,18 @@ func TestList_StatusRebasingOnly(t *testing.T) {
 func TestSwitch_FocusesWindow(t *testing.T) {
 	env := setupTest(t)
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "feature/auth").Return(wtPath, nil)
 	env.iterm.EXPECT().EnsureRunning().Return(nil)
 	env.iterm.EXPECT().SessionExists("c-123").Return(true)
 	env.iterm.EXPECT().FocusWindow("c-123").Return(nil)
 
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:            "myrepo",
 		Branch:          "feature/auth",
 		ClaudeSessionID: "c-123",
-	})
+	}))
 
 	err := switchRun("feature/auth")
 	require.NoError(t, err)
@@ -471,17 +471,17 @@ func TestSwitch_FocusesWindow(t *testing.T) {
 func TestSwitch_StaleSession(t *testing.T) {
 	env := setupTest(t)
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "feature/auth").Return(wtPath, nil)
 	env.iterm.EXPECT().EnsureRunning().Return(nil)
 	env.iterm.EXPECT().SessionExists("c-123").Return(false)
 
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:            "myrepo",
 		Branch:          "feature/auth",
 		ClaudeSessionID: "c-123",
-	})
+	}))
 
 	err := switchRun("feature/auth")
 	require.NoError(t, err)
@@ -493,7 +493,7 @@ func TestSwitch_StaleSession(t *testing.T) {
 func TestOpen_AlreadyOpen(t *testing.T) {
 	env := setupTest(t)
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
 	env.git.EXPECT().RepoName(mock.Anything).Return("myrepo", nil)
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "feature/auth").Return(wtPath, nil)
@@ -501,11 +501,11 @@ func TestOpen_AlreadyOpen(t *testing.T) {
 	env.iterm.EXPECT().SessionExists("c-123").Return(true)
 	env.iterm.EXPECT().FocusWindow("c-123").Return(nil)
 
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:            "myrepo",
 		Branch:          "feature/auth",
 		ClaudeSessionID: "c-123",
-	})
+	}))
 
 	err := openRun("feature/auth")
 	require.NoError(t, err)
@@ -515,7 +515,7 @@ func TestOpen_AlreadyOpen(t *testing.T) {
 func TestOpen_NewWindow(t *testing.T) {
 	env := setupTest(t)
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
 	env.git.EXPECT().RepoName(mock.Anything).Return("myrepo", nil)
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "feature/auth").Return(wtPath, nil)
@@ -547,7 +547,7 @@ func TestOpen_NotFoundPromptAccepted(t *testing.T) {
 	env.git.EXPECT().BranchExists(mock.Anything, "feat-mkdocs").Return(false, nil)
 	env.git.EXPECT().WorktreeAdd(mock.Anything, wtPath, "feat-mkdocs", "main", true).
 		Run(func(repoPath, path, branch, base string, newBranch bool) {
-			os.MkdirAll(path, 0755)
+			_ = os.MkdirAll(path, 0755)
 		}).Return(nil)
 
 	env.iterm.EXPECT().CreateWorktreeWindow(wtPath, "wt:myrepo:feat-mkdocs", false).
@@ -576,7 +576,7 @@ func TestOpen_BareShorthand(t *testing.T) {
 	// wt <branch> delegates to openRun
 	env := setupTest(t)
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
 	env.git.EXPECT().RepoName(mock.Anything).Return("myrepo", nil)
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "auth").Return(wtPath, nil)
@@ -597,14 +597,14 @@ func TestDelete_FullCleanup(t *testing.T) {
 	deleteBranchFlag = true
 
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "feature/auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
 	env.git.EXPECT().HasUnpushedCommits(wtPath, "main").Return(false, nil)
 	env.git.EXPECT().WorktreeRemove(mock.Anything, wtPath, false).
 		Run(func(repoPath, path string, force bool) {
-			os.RemoveAll(path)
+			_ = os.RemoveAll(path)
 		}).Return(nil)
 	env.git.EXPECT().BranchDelete(mock.Anything, "feature/auth", false).Return(nil)
 
@@ -612,11 +612,11 @@ func TestDelete_FullCleanup(t *testing.T) {
 	env.iterm.EXPECT().SessionExists("c-123").Return(true)
 	env.iterm.EXPECT().CloseWindow("c-123").Return(nil)
 
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:            "myrepo",
 		Branch:          "feature/auth",
 		ClaudeSessionID: "c-123",
-	})
+	}))
 
 	err := deleteRun("feature/auth")
 	require.NoError(t, err)
@@ -633,13 +633,13 @@ func TestDelete_Force(t *testing.T) {
 	deleteForce = true
 
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
 	// --force skips safety checks (no IsWorktreeDirty/HasUnpushedCommits calls)
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "auth").Return(wtPath, nil)
 	env.git.EXPECT().WorktreeRemove(mock.Anything, wtPath, true).
 		Run(func(repoPath, path string, force bool) {
-			os.RemoveAll(path)
+			_ = os.RemoveAll(path)
 		}).Return(nil)
 
 	err := deleteRun("auth")
@@ -649,13 +649,13 @@ func TestDelete_Force(t *testing.T) {
 func TestDelete_SafeCleanWorktree(t *testing.T) {
 	env := setupTest(t)
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
 	env.git.EXPECT().HasUnpushedCommits(wtPath, "main").Return(false, nil)
 	env.git.EXPECT().WorktreeRemove(mock.Anything, wtPath, false).
-		Run(func(repoPath, path string, force bool) { os.RemoveAll(path) }).Return(nil)
+		Run(func(repoPath, path string, force bool) { _ = os.RemoveAll(path) }).Return(nil)
 
 	err := deleteRun("auth")
 	require.NoError(t, err)
@@ -667,7 +667,7 @@ func TestDelete_DirtyWorktreePromptDenied(t *testing.T) {
 	promptFunc = func(msg string) bool { return false }
 
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(true, nil)
@@ -682,12 +682,12 @@ func TestDelete_DirtyWorktreePromptAccepted(t *testing.T) {
 	promptFunc = func(msg string) bool { return true }
 
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(true, nil)
 	env.git.EXPECT().WorktreeRemove(mock.Anything, wtPath, false).
-		Run(func(repoPath, path string, force bool) { os.RemoveAll(path) }).Return(nil)
+		Run(func(repoPath, path string, force bool) { _ = os.RemoveAll(path) }).Return(nil)
 
 	err := deleteRun("auth")
 	require.NoError(t, err)
@@ -699,7 +699,7 @@ func TestDelete_UnpushedCommitsPromptDenied(t *testing.T) {
 	promptFunc = func(msg string) bool { return false }
 
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
@@ -717,8 +717,8 @@ func TestDelete_All(t *testing.T) {
 
 	wtPath1 := filepath.Join(env.dir, "repo.worktrees", "auth")
 	wtPath2 := filepath.Join(env.dir, "repo.worktrees", "api")
-	os.MkdirAll(wtPath1, 0755)
-	os.MkdirAll(wtPath2, 0755)
+	require.NoError(t, os.MkdirAll(wtPath1, 0755))
+	require.NoError(t, os.MkdirAll(wtPath2, 0755))
 
 	env.git.EXPECT().WorktreeList(mock.Anything).Return([]gitops.WorktreeInfo{
 		{Path: env.dir, Branch: "main"},
@@ -726,9 +726,9 @@ func TestDelete_All(t *testing.T) {
 		{Path: wtPath2, Branch: "feature/api"},
 	}, nil)
 	env.git.EXPECT().WorktreeRemove(mock.Anything, wtPath1, true).
-		Run(func(repoPath, path string, force bool) { os.RemoveAll(path) }).Return(nil)
+		Run(func(repoPath, path string, force bool) { _ = os.RemoveAll(path) }).Return(nil)
 	env.git.EXPECT().WorktreeRemove(mock.Anything, wtPath2, true).
-		Run(func(repoPath, path string, force bool) { os.RemoveAll(path) }).Return(nil)
+		Run(func(repoPath, path string, force bool) { _ = os.RemoveAll(path) }).Return(nil)
 	env.git.EXPECT().WorktreePrune(mock.Anything).Return(nil)
 
 	err := deleteAllRun()
@@ -779,7 +779,7 @@ func TestDryRun_Open(t *testing.T) {
 	env.ui.DryRun = true
 
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
 	env.git.EXPECT().RepoName(mock.Anything).Return("myrepo", nil)
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "auth").Return(wtPath, nil)
@@ -795,13 +795,13 @@ func TestDryRun_Switch(t *testing.T) {
 	env.ui.DryRun = true
 
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "auth").Return(wtPath, nil)
 
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		ClaudeSessionID: "c-123",
-	})
+	}))
 
 	err := switchRun("auth")
 	require.NoError(t, err)
@@ -814,10 +814,10 @@ func TestPrune_CleansStaleState(t *testing.T) {
 	env := setupTest(t)
 
 	// Add state for a non-existent path
-	env.state.SetWorktree("/nonexistent/path", &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree("/nonexistent/path", &state.WorktreeState{
 		Repo:   "myrepo",
 		Branch: "stale",
-	})
+	}))
 
 	wtDir := filepath.Join(env.dir, "repo.worktrees")
 	env.git.EXPECT().WorktreesDir(mock.Anything).Return(wtDir, nil)
@@ -850,10 +850,10 @@ func TestPrune_DryRun(t *testing.T) {
 	dryRun = true
 	env.ui.DryRun = true
 
-	env.state.SetWorktree("/nonexistent/path", &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree("/nonexistent/path", &state.WorktreeState{
 		Repo:   "myrepo",
 		Branch: "stale",
-	})
+	}))
 
 	wtDir := filepath.Join(env.dir, "repo.worktrees")
 	env.git.EXPECT().WorktreesDir(mock.Anything).Return(wtDir, nil)
@@ -872,7 +872,7 @@ func TestDryRun_Delete(t *testing.T) {
 	env.ui.DryRun = true
 
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
@@ -899,7 +899,7 @@ func TestCreate_SetsClaudeTrust(t *testing.T) {
 	env.git.EXPECT().BranchExists(mock.Anything, "feature/auth").Return(false, nil)
 	env.git.EXPECT().WorktreeAdd(mock.Anything, wtPath, "feature/auth", "main", true).
 		Run(func(repoPath, path, branch, base string, newBranch bool) {
-			os.MkdirAll(path, 0755)
+			_ = os.MkdirAll(path, 0755)
 		}).Return(nil)
 
 	env.iterm.EXPECT().CreateWorktreeWindow(wtPath, "wt:myrepo:auth", false).
@@ -937,7 +937,7 @@ func TestDelete_RemovesClaudeTrust(t *testing.T) {
 	env := setupTest(t)
 
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
 	// Pre-set Claude trust
 	added, err := env.claude.TrustProject(wtPath)
@@ -948,7 +948,7 @@ func TestDelete_RemovesClaudeTrust(t *testing.T) {
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
 	env.git.EXPECT().HasUnpushedCommits(wtPath, "main").Return(false, nil)
 	env.git.EXPECT().WorktreeRemove(mock.Anything, wtPath, false).
-		Run(func(repoPath, path string, force bool) { os.RemoveAll(path) }).Return(nil)
+		Run(func(repoPath, path string, force bool) { _ = os.RemoveAll(path) }).Return(nil)
 
 	err = deleteRun("auth")
 	require.NoError(t, err)
@@ -967,7 +967,7 @@ func TestPrune_CleansOrphanedTrust(t *testing.T) {
 	stalePath := filepath.Join(wtDir, "stale-branch")
 
 	// Create only the existing path
-	os.MkdirAll(existingPath, 0755)
+	require.NoError(t, os.MkdirAll(existingPath, 0755))
 
 	// Trust both
 	_, err := env.claude.TrustProject(existingPath)
@@ -999,12 +999,12 @@ func TestPrune_CleansOrphanedTrust(t *testing.T) {
 func TestMerge_LocalSuccess_WithRemote(t *testing.T) {
 	env := setupTest(t)
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:   "myrepo",
 		Branch: "feature/auth",
-	})
+	}))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "feature/auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
@@ -1019,7 +1019,7 @@ func TestMerge_LocalSuccess_WithRemote(t *testing.T) {
 
 	// Cleanup expectations: remove worktree + delete branch
 	env.git.EXPECT().WorktreeRemove(mock.Anything, wtPath, true).
-		Run(func(repoPath, path string, force bool) { os.RemoveAll(path) }).Return(nil)
+		Run(func(repoPath, path string, force bool) { _ = os.RemoveAll(path) }).Return(nil)
 	env.git.EXPECT().BranchDelete(mock.Anything, "feature/auth", false).Return(nil)
 
 	err := mergeRun("feature/auth")
@@ -1033,12 +1033,12 @@ func TestMerge_LocalSuccess_WithRemote(t *testing.T) {
 func TestMerge_LocalSuccess_NoRemote(t *testing.T) {
 	env := setupTest(t)
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:   "myrepo",
 		Branch: "feature/auth",
-	})
+	}))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "feature/auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
@@ -1051,7 +1051,7 @@ func TestMerge_LocalSuccess_NoRemote(t *testing.T) {
 
 	// Cleanup: no push, but still remove worktree + delete branch
 	env.git.EXPECT().WorktreeRemove(mock.Anything, wtPath, true).
-		Run(func(repoPath, path string, force bool) { os.RemoveAll(path) }).Return(nil)
+		Run(func(repoPath, path string, force bool) { _ = os.RemoveAll(path) }).Return(nil)
 	env.git.EXPECT().BranchDelete(mock.Anything, "feature/auth", false).Return(nil)
 
 	err := mergeRun("feature/auth")
@@ -1065,7 +1065,7 @@ func TestMerge_LocalSuccess_NoRemote(t *testing.T) {
 func TestMerge_NothingToMerge(t *testing.T) {
 	env := setupTest(t)
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "feature/auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
@@ -1079,7 +1079,7 @@ func TestMerge_NothingToMerge(t *testing.T) {
 func TestMerge_DirtyWorktree(t *testing.T) {
 	env := setupTest(t)
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(true, nil)
@@ -1094,12 +1094,12 @@ func TestMerge_DirtyWorktree_Force(t *testing.T) {
 	mergeForce = true
 
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:   "myrepo",
 		Branch: "feature/auth",
-	})
+	}))
 
 	// --force skips IsWorktreeDirty
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "auth").Return(wtPath, nil)
@@ -1110,7 +1110,7 @@ func TestMerge_DirtyWorktree_Force(t *testing.T) {
 	env.git.EXPECT().HasRemote(mock.Anything).Return(false, nil).Times(2)
 	env.git.EXPECT().Merge(env.dir, "feature/auth").Return(nil)
 	env.git.EXPECT().WorktreeRemove(mock.Anything, wtPath, true).
-		Run(func(repoPath, path string, force bool) { os.RemoveAll(path) }).Return(nil)
+		Run(func(repoPath, path string, force bool) { _ = os.RemoveAll(path) }).Return(nil)
 	env.git.EXPECT().BranchDelete(mock.Anything, "feature/auth", false).Return(nil)
 
 	err := mergeRun("auth")
@@ -1121,12 +1121,12 @@ func TestMerge_DirtyWorktree_Force(t *testing.T) {
 func TestMerge_MergeConflict_NoCleanup(t *testing.T) {
 	env := setupTest(t)
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:   "myrepo",
 		Branch: "feature/auth",
-	})
+	}))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "feature/auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
@@ -1150,12 +1150,12 @@ func TestMerge_NoCleanup(t *testing.T) {
 	mergeNoCleanup = true
 
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:   "myrepo",
 		Branch: "feature/auth",
-	})
+	}))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "feature/auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
@@ -1177,7 +1177,7 @@ func TestMerge_NoCleanup(t *testing.T) {
 func TestMerge_MainRepoNotOnBaseBranch(t *testing.T) {
 	env := setupTest(t)
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
@@ -1196,12 +1196,12 @@ func TestMerge_PR_Success(t *testing.T) {
 	mergePR = true
 
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:   "myrepo",
 		Branch: "feature/auth",
-	})
+	}))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "feature/auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
@@ -1230,12 +1230,12 @@ func TestMerge_PR_Draft(t *testing.T) {
 	mergeTitle = "My PR"
 
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:   "myrepo",
 		Branch: "feature/auth",
-	})
+	}))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "feature/auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
@@ -1260,12 +1260,12 @@ func TestMerge_DryRun_Local(t *testing.T) {
 	env.ui.DryRun = true
 
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:   "myrepo",
 		Branch: "feature/auth",
-	})
+	}))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "feature/auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
@@ -1292,12 +1292,12 @@ func TestMerge_DryRun_PR(t *testing.T) {
 	mergePR = true
 
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:   "myrepo",
 		Branch: "feature/auth",
-	})
+	}))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "feature/auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
@@ -1327,12 +1327,12 @@ func TestMerge_CustomBase(t *testing.T) {
 	mergeBase = "develop"
 
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:   "myrepo",
 		Branch: "feature/auth",
-	})
+	}))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "feature/auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
@@ -1344,7 +1344,7 @@ func TestMerge_CustomBase(t *testing.T) {
 	env.git.EXPECT().HasRemote(mock.Anything).Return(false, nil).Times(2)
 	env.git.EXPECT().Merge(env.dir, "feature/auth").Return(nil)
 	env.git.EXPECT().WorktreeRemove(mock.Anything, wtPath, true).
-		Run(func(repoPath, path string, force bool) { os.RemoveAll(path) }).Return(nil)
+		Run(func(repoPath, path string, force bool) { _ = os.RemoveAll(path) }).Return(nil)
 	env.git.EXPECT().BranchDelete(mock.Anything, "feature/auth", false).Return(nil)
 
 	err := mergeRun("feature/auth")
@@ -1355,12 +1355,12 @@ func TestMerge_CustomBase(t *testing.T) {
 func TestMerge_Continue_Success(t *testing.T) {
 	env := setupTest(t)
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:   "myrepo",
 		Branch: "feature/auth",
-	})
+	}))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "feature/auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
@@ -1372,7 +1372,7 @@ func TestMerge_Continue_Success(t *testing.T) {
 
 	// Cleanup
 	env.git.EXPECT().WorktreeRemove(mock.Anything, wtPath, true).
-		Run(func(repoPath, path string, force bool) { os.RemoveAll(path) }).Return(nil)
+		Run(func(repoPath, path string, force bool) { _ = os.RemoveAll(path) }).Return(nil)
 	env.git.EXPECT().BranchDelete(mock.Anything, "feature/auth", false).Return(nil)
 
 	err := mergeRun("feature/auth")
@@ -1386,12 +1386,12 @@ func TestMerge_Continue_Success(t *testing.T) {
 func TestMerge_Continue_WithRemote(t *testing.T) {
 	env := setupTest(t)
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:   "myrepo",
 		Branch: "feature/auth",
-	})
+	}))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "feature/auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
@@ -1403,7 +1403,7 @@ func TestMerge_Continue_WithRemote(t *testing.T) {
 	env.git.EXPECT().Push(env.dir, "main", false).Return(nil)
 
 	env.git.EXPECT().WorktreeRemove(mock.Anything, wtPath, true).
-		Run(func(repoPath, path string, force bool) { os.RemoveAll(path) }).Return(nil)
+		Run(func(repoPath, path string, force bool) { _ = os.RemoveAll(path) }).Return(nil)
 	env.git.EXPECT().BranchDelete(mock.Anything, "feature/auth", false).Return(nil)
 
 	err := mergeRun("feature/auth")
@@ -1414,7 +1414,7 @@ func TestMerge_Continue_WithRemote(t *testing.T) {
 func TestMerge_Continue_UnresolvedConflicts(t *testing.T) {
 	env := setupTest(t)
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
@@ -1433,12 +1433,12 @@ func TestMerge_Continue_DryRun(t *testing.T) {
 	env.ui.DryRun = true
 
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:   "myrepo",
 		Branch: "feature/auth",
-	})
+	}))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "feature/auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
@@ -1459,13 +1459,13 @@ func TestMerge_Continue_DryRun(t *testing.T) {
 func TestLifecycleDelete_FullCleanup(t *testing.T) {
 	env := setupTest(t)
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:            "myrepo",
 		Branch:          "feature/auth",
 		ClaudeSessionID: "c-123",
-	})
+	}))
 
 	// Trust the project first
 	_, err := env.claude.TrustProject(wtPath)
@@ -1476,7 +1476,7 @@ func TestLifecycleDelete_FullCleanup(t *testing.T) {
 	env.iterm.EXPECT().CloseWindow("c-123").Return(nil)
 
 	env.git.EXPECT().WorktreeRemove(mock.Anything, wtPath, false).
-		Run(func(repoPath, path string, force bool) { os.RemoveAll(path) }).Return(nil)
+		Run(func(repoPath, path string, force bool) { _ = os.RemoveAll(path) }).Return(nil)
 	env.git.EXPECT().BranchDelete(mock.Anything, "feature/auth", false).Return(nil)
 
 	err = lcMgr.Delete(lifecycle.DeleteOptions{
@@ -1505,10 +1505,10 @@ func TestLifecycleDelete_FullCleanup(t *testing.T) {
 func TestLifecycleDelete_NoBranchDelete(t *testing.T) {
 	env := setupTest(t)
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
 	env.git.EXPECT().WorktreeRemove(mock.Anything, wtPath, true).
-		Run(func(repoPath, path string, force bool) { os.RemoveAll(path) }).Return(nil)
+		Run(func(repoPath, path string, force bool) { _ = os.RemoveAll(path) }).Return(nil)
 
 	// No BranchDelete expected since DeleteBranch=false
 
@@ -1527,12 +1527,12 @@ func TestLifecycleDelete_NoBranchDelete(t *testing.T) {
 func TestSync_Success_WithRemote(t *testing.T) {
 	env := setupTest(t)
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:   "myrepo",
 		Branch: "feature/auth",
-	})
+	}))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "feature/auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
@@ -1558,12 +1558,12 @@ func TestSync_Success_WithRemote(t *testing.T) {
 func TestSync_Success_NoRemote(t *testing.T) {
 	env := setupTest(t)
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:   "myrepo",
 		Branch: "feature/auth",
-	})
+	}))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "feature/auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
@@ -1586,7 +1586,7 @@ func TestSync_Success_NoRemote(t *testing.T) {
 func TestSync_DirtyWorktree(t *testing.T) {
 	env := setupTest(t)
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(true, nil)
@@ -1601,12 +1601,12 @@ func TestSync_DirtyWorktree_Force(t *testing.T) {
 	syncForce = true
 
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:   "myrepo",
 		Branch: "feature/auth",
-	})
+	}))
 
 	// --force skips IsWorktreeDirty
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "auth").Return(wtPath, nil)
@@ -1638,12 +1638,12 @@ func TestSync_CustomBase(t *testing.T) {
 	syncBase = "develop"
 
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:   "myrepo",
 		Branch: "feature/auth",
-	})
+	}))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "feature/auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
@@ -1662,12 +1662,12 @@ func TestSync_CustomBase(t *testing.T) {
 func TestSync_Continue_Success(t *testing.T) {
 	env := setupTest(t)
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:   "myrepo",
 		Branch: "feature/auth",
-	})
+	}))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "feature/auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
@@ -1686,7 +1686,7 @@ func TestSync_Continue_Success(t *testing.T) {
 func TestSync_Continue_UnresolvedConflicts(t *testing.T) {
 	env := setupTest(t)
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
@@ -1704,12 +1704,12 @@ func TestSync_DryRun(t *testing.T) {
 	env.ui.DryRun = true
 
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:   "myrepo",
 		Branch: "feature/auth",
-	})
+	}))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "feature/auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
@@ -1734,8 +1734,8 @@ func TestSync_All_Success(t *testing.T) {
 
 	wtPath1 := filepath.Join(env.dir, "repo.worktrees", "auth")
 	wtPath2 := filepath.Join(env.dir, "repo.worktrees", "api")
-	os.MkdirAll(wtPath1, 0755)
-	os.MkdirAll(wtPath2, 0755)
+	require.NoError(t, os.MkdirAll(wtPath1, 0755))
+	require.NoError(t, os.MkdirAll(wtPath2, 0755))
 
 	env.git.EXPECT().WorktreeList(mock.Anything).Return([]gitops.WorktreeInfo{
 		{Path: env.dir, Branch: "main"},
@@ -1773,8 +1773,8 @@ func TestSync_All_SkipsDirty(t *testing.T) {
 
 	wtPath1 := filepath.Join(env.dir, "repo.worktrees", "auth")
 	wtPath2 := filepath.Join(env.dir, "repo.worktrees", "api")
-	os.MkdirAll(wtPath1, 0755)
-	os.MkdirAll(wtPath2, 0755)
+	require.NoError(t, os.MkdirAll(wtPath1, 0755))
+	require.NoError(t, os.MkdirAll(wtPath2, 0755))
 
 	env.git.EXPECT().WorktreeList(mock.Anything).Return([]gitops.WorktreeInfo{
 		{Path: env.dir, Branch: "main"},
@@ -1819,12 +1819,12 @@ func TestSync_Rebase_Success_WithRemote(t *testing.T) {
 	env := setupTest(t)
 	syncRebase = true
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:   "myrepo",
 		Branch: "feature/auth",
-	})
+	}))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "feature/auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
@@ -1849,12 +1849,12 @@ func TestSync_Rebase_Success_NoRemote(t *testing.T) {
 	env := setupTest(t)
 	syncRebase = true
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:   "myrepo",
 		Branch: "feature/auth",
-	})
+	}))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "feature/auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
@@ -1876,12 +1876,12 @@ func TestSync_Rebase_Conflict(t *testing.T) {
 	env := setupTest(t)
 	syncRebase = true
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:   "myrepo",
 		Branch: "feature/auth",
-	})
+	}))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "feature/auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
@@ -1903,12 +1903,12 @@ func TestSync_Rebase_Conflict(t *testing.T) {
 func TestSync_Rebase_Continue_Success(t *testing.T) {
 	env := setupTest(t)
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:   "myrepo",
 		Branch: "feature/auth",
-	})
+	}))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "feature/auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
@@ -1928,7 +1928,7 @@ func TestSync_Rebase_Continue_Success(t *testing.T) {
 func TestSync_Rebase_Continue_UnresolvedConflicts(t *testing.T) {
 	env := setupTest(t)
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
@@ -1949,8 +1949,8 @@ func TestSync_Rebase_All(t *testing.T) {
 
 	wtPath1 := filepath.Join(env.dir, "repo.worktrees", "auth")
 	wtPath2 := filepath.Join(env.dir, "repo.worktrees", "api")
-	os.MkdirAll(wtPath1, 0755)
-	os.MkdirAll(wtPath2, 0755)
+	require.NoError(t, os.MkdirAll(wtPath1, 0755))
+	require.NoError(t, os.MkdirAll(wtPath2, 0755))
 
 	env.git.EXPECT().WorktreeList(mock.Anything).Return([]gitops.WorktreeInfo{
 		{Path: env.dir, Branch: "main"},
@@ -1983,12 +1983,12 @@ func TestSync_Rebase_ConfigDefault(t *testing.T) {
 	env := setupTest(t)
 	viper.Set("rebase", true) // config sets rebase as default
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:   "myrepo",
 		Branch: "feature/auth",
-	})
+	}))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "feature/auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
@@ -2010,12 +2010,12 @@ func TestSync_MergeOverridesConfigRebase(t *testing.T) {
 	syncMerge = true          // but --merge flag overrides
 
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:   "myrepo",
 		Branch: "feature/auth",
-	})
+	}))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "feature/auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
@@ -2037,8 +2037,8 @@ func TestSync_All_SkipsRebaseInProgress(t *testing.T) {
 
 	wtPath1 := filepath.Join(env.dir, "repo.worktrees", "auth")
 	wtPath2 := filepath.Join(env.dir, "repo.worktrees", "api")
-	os.MkdirAll(wtPath1, 0755)
-	os.MkdirAll(wtPath2, 0755)
+	require.NoError(t, os.MkdirAll(wtPath1, 0755))
+	require.NoError(t, os.MkdirAll(wtPath2, 0755))
 
 	env.git.EXPECT().WorktreeList(mock.Anything).Return([]gitops.WorktreeInfo{
 		{Path: env.dir, Branch: "main"},
@@ -2067,12 +2067,12 @@ func TestSync_All_SkipsRebaseInProgress(t *testing.T) {
 func TestSync_WithRemote_LocalMainAhead(t *testing.T) {
 	env := setupTest(t)
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:   "myrepo",
 		Branch: "feature/auth",
-	})
+	}))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "feature/auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
@@ -2101,7 +2101,7 @@ func TestSync_All_WithRemote_LocalMainAhead(t *testing.T) {
 	syncAll = true
 
 	wtPath1 := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath1, 0755)
+	require.NoError(t, os.MkdirAll(wtPath1, 0755))
 
 	env.git.EXPECT().WorktreeList(mock.Anything).Return([]gitops.WorktreeInfo{
 		{Path: env.dir, Branch: "main"},
@@ -2134,12 +2134,12 @@ func TestMerge_Rebase_LocalSuccess(t *testing.T) {
 	mergeRebase = true
 
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:   "myrepo",
 		Branch: "feature/auth",
-	})
+	}))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "feature/auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
@@ -2153,7 +2153,7 @@ func TestMerge_Rebase_LocalSuccess(t *testing.T) {
 
 	// Cleanup
 	env.git.EXPECT().WorktreeRemove(mock.Anything, wtPath, true).
-		Run(func(repoPath, path string, force bool) { os.RemoveAll(path) }).Return(nil)
+		Run(func(repoPath, path string, force bool) { _ = os.RemoveAll(path) }).Return(nil)
 	env.git.EXPECT().BranchDelete(mock.Anything, "feature/auth", false).Return(nil)
 
 	err := mergeRun("feature/auth")
@@ -2171,12 +2171,12 @@ func TestMerge_Rebase_Conflict(t *testing.T) {
 	mergeRebase = true
 
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:   "myrepo",
 		Branch: "feature/auth",
-	})
+	}))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "feature/auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
@@ -2199,12 +2199,12 @@ func TestMerge_Rebase_Conflict(t *testing.T) {
 func TestMerge_Rebase_Continue_Success(t *testing.T) {
 	env := setupTest(t)
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:   "myrepo",
 		Branch: "feature/auth",
-	})
+	}))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "feature/auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
@@ -2218,7 +2218,7 @@ func TestMerge_Rebase_Continue_Success(t *testing.T) {
 
 	// Cleanup
 	env.git.EXPECT().WorktreeRemove(mock.Anything, wtPath, true).
-		Run(func(repoPath, path string, force bool) { os.RemoveAll(path) }).Return(nil)
+		Run(func(repoPath, path string, force bool) { _ = os.RemoveAll(path) }).Return(nil)
 	env.git.EXPECT().BranchDelete(mock.Anything, "feature/auth", false).Return(nil)
 
 	err := mergeRun("feature/auth")
@@ -2234,12 +2234,12 @@ func TestMerge_Rebase_ConfigDefault(t *testing.T) {
 	viper.Set("rebase", true) // config sets rebase as default
 
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:   "myrepo",
 		Branch: "feature/auth",
-	})
+	}))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "feature/auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
@@ -2252,7 +2252,7 @@ func TestMerge_Rebase_ConfigDefault(t *testing.T) {
 	env.git.EXPECT().Merge(env.dir, "feature/auth").Return(nil) // ff merge
 
 	env.git.EXPECT().WorktreeRemove(mock.Anything, wtPath, true).
-		Run(func(repoPath, path string, force bool) { os.RemoveAll(path) }).Return(nil)
+		Run(func(repoPath, path string, force bool) { _ = os.RemoveAll(path) }).Return(nil)
 	env.git.EXPECT().BranchDelete(mock.Anything, "feature/auth", false).Return(nil)
 
 	err := mergeRun("feature/auth")
@@ -2266,12 +2266,12 @@ func TestMerge_MergeOverridesConfigRebase(t *testing.T) {
 	mergeMerge = true          // but --merge flag overrides
 
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:   "myrepo",
 		Branch: "feature/auth",
-	})
+	}))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "feature/auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
@@ -2283,7 +2283,7 @@ func TestMerge_MergeOverridesConfigRebase(t *testing.T) {
 	env.git.EXPECT().Merge(env.dir, "feature/auth").Return(nil)
 
 	env.git.EXPECT().WorktreeRemove(mock.Anything, wtPath, true).
-		Run(func(repoPath, path string, force bool) { os.RemoveAll(path) }).Return(nil)
+		Run(func(repoPath, path string, force bool) { _ = os.RemoveAll(path) }).Return(nil)
 	env.git.EXPECT().BranchDelete(mock.Anything, "feature/auth", false).Return(nil)
 
 	err := mergeRun("feature/auth")
@@ -2298,12 +2298,12 @@ func TestMerge_PR_RebaseWarning(t *testing.T) {
 	mergeRebase = true
 
 	wtPath := filepath.Join(env.dir, "repo.worktrees", "auth")
-	os.MkdirAll(wtPath, 0755)
+	require.NoError(t, os.MkdirAll(wtPath, 0755))
 
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:   "myrepo",
 		Branch: "feature/auth",
-	})
+	}))
 
 	env.git.EXPECT().ResolveWorktree(mock.Anything, "feature/auth").Return(wtPath, nil)
 	env.git.EXPECT().IsWorktreeDirty(wtPath).Return(false, nil)
@@ -2330,10 +2330,10 @@ func TestDiscover_FindsUnmanaged(t *testing.T) {
 	externalPath := filepath.Join(env.dir, ".claude", "worktrees", "glittery-pebble")
 
 	// auth is in state, glittery-pebble is NOT
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:   "myrepo",
 		Branch: "feature/auth",
-	})
+	}))
 
 	env.git.EXPECT().RepoName(mock.Anything).Return("myrepo", nil)
 	env.git.EXPECT().WorktreesDir(mock.Anything).Return(wtDir, nil)
@@ -2358,10 +2358,10 @@ func TestDiscover_NoneFound(t *testing.T) {
 	wtDir := filepath.Join(env.dir, "repo.worktrees")
 	wtPath := filepath.Join(wtDir, "auth")
 
-	env.state.SetWorktree(wtPath, &state.WorktreeState{
+	require.NoError(t, env.state.SetWorktree(wtPath, &state.WorktreeState{
 		Repo:   "myrepo",
 		Branch: "feature/auth",
-	})
+	}))
 
 	env.git.EXPECT().RepoName(mock.Anything).Return("myrepo", nil)
 	env.git.EXPECT().WorktreesDir(mock.Anything).Return(wtDir, nil)

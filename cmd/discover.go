@@ -54,11 +54,11 @@ func discoverRun() error {
 
 	// Print colored output for unmanaged worktrees (ops layer doesn't have UI colors)
 	if len(result.Unmanaged) > 0 {
-		fmt.Fprintln(output.Out)
+		_, _ = fmt.Fprintln(output.Out)
 		for _, wt := range result.Unmanaged {
 			output.Info("  %s  %s  (%s)", ui.Cyan(wt.Branch), wt.Path, wt.Source)
 		}
-		fmt.Fprintln(output.Out)
+		_, _ = fmt.Fprintln(output.Out)
 
 		if !discoverAdopt {
 			output.Info("Run 'wt discover --adopt' to create state entries for these worktrees")
@@ -66,7 +66,7 @@ func discoverRun() error {
 	}
 
 	if result.Adopted > 0 {
-		fmt.Fprintln(output.Out)
+		_, _ = fmt.Fprintln(output.Out)
 	}
 	return nil
 }

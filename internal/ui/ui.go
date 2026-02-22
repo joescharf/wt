@@ -105,24 +105,24 @@ func GitStatusColor(status string) string {
 }
 
 func (u *UI) Info(format string, a ...any) {
-	fmt.Fprintf(u.Out, "%s %s\n", infoPrefix, fmt.Sprintf(format, a...))
+	_, _ = fmt.Fprintf(u.Out, "%s %s\n", infoPrefix, fmt.Sprintf(format, a...))
 }
 
 func (u *UI) Success(format string, a ...any) {
-	fmt.Fprintf(u.Out, "%s %s\n", successPrefix, fmt.Sprintf(format, a...))
+	_, _ = fmt.Fprintf(u.Out, "%s %s\n", successPrefix, fmt.Sprintf(format, a...))
 }
 
 func (u *UI) Warning(format string, a ...any) {
-	fmt.Fprintf(u.ErrOut, "%s %s\n", warningPrefix, fmt.Sprintf(format, a...))
+	_, _ = fmt.Fprintf(u.ErrOut, "%s %s\n", warningPrefix, fmt.Sprintf(format, a...))
 }
 
 func (u *UI) Error(format string, a ...any) {
-	fmt.Fprintf(u.ErrOut, "%s %s\n", errorPrefix, fmt.Sprintf(format, a...))
+	_, _ = fmt.Fprintf(u.ErrOut, "%s %s\n", errorPrefix, fmt.Sprintf(format, a...))
 }
 
 func (u *UI) VerboseLog(format string, a ...any) {
 	if u.Verbose {
-		fmt.Fprintf(u.Out, "%s %s\n", verbosePrefix, fmt.Sprintf(format, a...))
+		_, _ = fmt.Fprintf(u.Out, "%s %s\n", verbosePrefix, fmt.Sprintf(format, a...))
 	}
 }
 

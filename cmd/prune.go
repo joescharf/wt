@@ -40,7 +40,7 @@ func pruneRun() error {
 
 	totalPruned := result.StatePruned + result.TrustPruned
 	if totalPruned > 0 {
-		fmt.Fprintln(output.Out)
+		_, _ = fmt.Fprintln(output.Out)
 	}
 	return nil
 }

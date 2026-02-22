@@ -45,7 +45,7 @@ func listRun() error {
 		output.Info("Pruned %d stale state entries", pruned)
 	}
 
-	fmt.Fprintf(output.Out, "Worktrees for %s\n\n", ui.Cyan(repoName))
+	_, _ = fmt.Fprintf(output.Out, "Worktrees for %s\n\n", ui.Cyan(repoName))
 
 	worktrees, err := gitClient.WorktreeList(repoRoot)
 	if err != nil {
@@ -139,7 +139,7 @@ func listRun() error {
 
 		// Calculate age
 		age := "-"
-		if ws != nil && !ws.CreatedAt.Time.IsZero() {
+		if ws != nil && !ws.CreatedAt.IsZero() {
 			age = formatAge(time.Since(ws.CreatedAt.Time))
 		}
 
@@ -181,10 +181,10 @@ func listRun() error {
 		)
 
 		table.Header("BRANCH", "PATH", "SOURCE", "WINDOW", "STATUS", "AGE")
-		table.Bulk(rows)
-		table.Render()
+		_ = table.Bulk(rows)
+		_ = table.Render()
 	}
-	fmt.Fprintln(output.Out)
+	_, _ = fmt.Fprintln(output.Out)
 	return nil
 }
 

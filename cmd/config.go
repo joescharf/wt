@@ -135,8 +135,8 @@ func configInitRun() error {
 
 	if dryRun {
 		output.DryRunMsg("Would create config file: %s", cfgPath)
-		fmt.Fprintln(output.Out)
-		fmt.Fprint(output.Out, buf.String())
+		_, _ = fmt.Fprintln(output.Out)
+		_, _ = fmt.Fprint(output.Out, buf.String())
 		return nil
 	}
 
@@ -151,8 +151,8 @@ func configInitRun() error {
 	}
 
 	output.Success("Config file created: %s", cfgPath)
-	fmt.Fprintln(output.Out)
-	fmt.Fprint(output.Out, buf.String())
+	_, _ = fmt.Fprintln(output.Out)
+	_, _ = fmt.Fprint(output.Out, buf.String())
 	return nil
 }
 
@@ -181,7 +181,7 @@ func configShowRun() error {
 	} else {
 		output.Info("Config file: (none)")
 	}
-	fmt.Fprintln(output.Out)
+	_, _ = fmt.Fprintln(output.Out)
 
 	// Read config file values to determine file source
 	fileValues := readConfigFileValues(cfgPath)
@@ -189,7 +189,7 @@ func configShowRun() error {
 	for _, k := range configKeys {
 		val := viper.Get(k.Key)
 		source := detectSource(k.Key, k.EnvVar, fileValues)
-		fmt.Fprintf(output.Out, "  %-14s %v  %s\n", k.Key, val, source)
+		_, _ = fmt.Fprintf(output.Out, "  %-14s %v  %s\n", k.Key, val, source)
 	}
 
 	return nil

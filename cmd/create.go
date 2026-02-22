@@ -30,7 +30,7 @@ func init() {
 	createCmd.Flags().StringVar(&createBase, "base", "", "Base branch (default from config)")
 	createCmd.Flags().BoolVar(&createNoClaude, "no-claude", false, "Don't auto-launch claude in top pane")
 	createCmd.Flags().BoolVar(&createExisting, "existing", false, "Use existing branch instead of creating new")
-	createCmd.RegisterFlagCompletionFunc("base", completeBranchNames)
+	_ = createCmd.RegisterFlagCompletionFunc("base", completeBranchNames)
 	rootCmd.AddCommand(createCmd)
 }
 
@@ -55,7 +55,7 @@ func createRun(branch string) error {
 	}
 
 	if result.Created {
-		fmt.Fprintln(output.Out)
+		_, _ = fmt.Fprintln(output.Out)
 		output.Success("Worktree ready: %s", ui.Cyan(result.WtPath))
 	}
 	return nil
