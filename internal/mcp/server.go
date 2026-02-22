@@ -16,19 +16,29 @@ import (
 	state "github.com/joescharf/wt/pkg/wtstate"
 )
 
+// Config holds configurable settings for the MCP server.
+type Config struct {
+	BaseBranch string // default base branch (e.g. "main")
+}
+
 // Server wraps the wt dependencies and exposes them as MCP tools.
 type Server struct {
 	git   GitClient
 	iterm iterm.Client
 	state *state.Manager
+	cfg   Config
 }
 
 // NewServer creates the MCP server wrapper with all required dependencies.
-func NewServer(gc GitClient, ic iterm.Client, sm *state.Manager) *Server {
+func NewServer(gc GitClient, ic iterm.Client, sm *state.Manager, cfg Config) *Server {
+	if cfg.BaseBranch == "" {
+		cfg.BaseBranch = "main"
+	}
 	return &Server{
 		git:   gc,
 		iterm: ic,
 		state: sm,
+		cfg:   cfg,
 	}
 }
 
@@ -165,7 +175,7 @@ func (s *Server) handleCreate(ctx context.Context, request mcp.CallToolRequest) 
 		return mcp.NewToolResultError("missing required parameter: branch"), nil
 	}
 
-	baseBranch := request.GetString("base", "main")
+	baseBranch := request.GetString("base", s.cfg.BaseBranch)
 	noClaude := request.GetBool("no_claude", false)
 
 	repoName, err := s.git.RepoName(repoPath)
@@ -368,7 +378,7 @@ func (s *Server) handleDelete(ctx context.Context, request mcp.CallToolRequest) 
 			return mcp.NewToolResultError(fmt.Sprintf("worktree '%s' has uncommitted changes (use force=true to override)", filepath.Base(wtPath))), nil
 		}
 
-		unpushed, err := s.git.HasUnpushedCommits(wtPath, "main")
+		unpushed, err := s.git.HasUnpushedCommits(wtPath, s.cfg.BaseBranch)
 		if err == nil && unpushed {
 			return mcp.NewToolResultError(fmt.Sprintf("worktree '%s' has unpushed commits (use force=true to override)", filepath.Base(wtPath))), nil
 		}
@@ -385,6 +395,11 @@ func (s *Server) handleDelete(ctx context.Context, request mcp.CallToolRequest) 
 	// Remove worktree
 	if err := s.git.WorktreeRemove(repoPath, wtPath, force); err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("failed to remove worktree: %v", err)), nil
+	}
+
+	// Delete branch (try normal first, fall back to force)
+	if err := s.git.BranchDelete(repoPath, branch, false); err != nil {
+		_ = s.git.BranchDelete(repoPath, branch, true)
 	}
 
 	// Clean state
@@ -432,7 +447,7 @@ func (s *Server) handleSync(ctx context.Context, request mcp.CallToolRequest) (*
 		return mcp.NewToolResultError(fmt.Sprintf("worktree not found for branch '%s': %v", branch, err)), nil
 	}
 
-	baseBranch := "main"
+	baseBranch := s.cfg.BaseBranch
 	mergeSource := baseBranch
 
 	// Fetch if remote exists
@@ -513,7 +528,7 @@ func (s *Server) handleMerge(ctx context.Context, request mcp.CallToolRequest) (
 		return mcp.NewToolResultError(fmt.Sprintf("worktree not found for branch '%s': %v", branch, err)), nil
 	}
 
-	baseBranch := "main"
+	baseBranch := s.cfg.BaseBranch
 
 	// Check if there are commits to merge
 	hasCommits, _ := s.git.HasUnpushedCommits(wtPath, baseBranch)
@@ -558,11 +573,25 @@ func (s *Server) handleMergeLocal(repoPath, wtPath, branch, baseBranch, strategy
 		_ = s.git.Push(repoRoot, baseBranch, false)
 	}
 
+	// Post-merge cleanup: close iTerm, remove worktree, delete branch, clean state
+	ws, _ := s.state.GetWorktree(wtPath)
+	if ws != nil && ws.ClaudeSessionID != "" {
+		if s.iterm.IsRunning() && s.iterm.SessionExists(ws.ClaudeSessionID) {
+			_ = s.iterm.CloseWindow(ws.ClaudeSessionID)
+			time.Sleep(500 * time.Millisecond)
+		}
+	}
+
+	_ = s.git.WorktreeRemove(repoPath, wtPath, false)
+	_ = s.git.BranchDelete(repoPath, branch, false)
+	_ = s.state.RemoveWorktree(wtPath)
+
 	result := map[string]any{
 		"branch":      branch,
 		"base":        baseBranch,
 		"strategy":    strategy,
 		"merged":      true,
+		"cleaned_up":  true,
 	}
 
 	data, err := json.Marshal(result)

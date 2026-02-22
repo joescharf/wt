@@ -306,7 +306,7 @@ func newTestServer(t *testing.T) (*Server, *mockGitClient, *mockItermClient, *st
 	stateDir := t.TempDir()
 	sm := state.NewManager(filepath.Join(stateDir, "state.json"))
 
-	srv := NewServer(gc, ic, sm)
+	srv := NewServer(gc, ic, sm, Config{BaseBranch: "main"})
 	require.NotNil(t, srv)
 
 	return srv, gc, ic, sm
@@ -617,6 +617,10 @@ func TestHandleDelete_Success(t *testing.T) {
 	// Verify worktree was removed
 	require.Len(t, gc.removedWorktrees, 1)
 
+	// Verify branch was deleted
+	require.Len(t, gc.deletedBranches, 1)
+	assert.Equal(t, "feature/login", gc.deletedBranches[0])
+
 	// Verify iTerm window was closed
 	require.Len(t, ic.closeCalls, 1)
 }
@@ -762,6 +766,42 @@ func TestHandleSync_MissingBranch(t *testing.T) {
 	assert.True(t, result.IsError)
 }
 
+func TestHandleSync_CustomBaseBranch(t *testing.T) {
+	gc := &mockGitClient{
+		repoRoot:      "/tmp/testrepo",
+		repoName:      "testrepo",
+		worktreesDir:  "/tmp/testrepo.worktrees",
+		currentBranch: "develop",
+		branches:      map[string]bool{"develop": true},
+		worktrees: []gitops.WorktreeInfo{
+			{Path: "/tmp/testrepo", Branch: "develop", HEAD: "abc123"},
+			{Path: "/tmp/testrepo.worktrees/feature", Branch: "feature/login", HEAD: "def456"},
+		},
+		commitsBehind: 2,
+	}
+	ic := &mockItermClient{
+		running:  true,
+		sessions: make(map[string]bool),
+	}
+
+	stateDir := t.TempDir()
+	sm := state.NewManager(filepath.Join(stateDir, "state.json"))
+	srv := NewServer(gc, ic, sm, Config{BaseBranch: "develop"})
+
+	ctx := context.Background()
+	req := callToolReq("wt_sync", map[string]any{
+		"repo_path": "/tmp/testrepo",
+		"branch":    "feature/login",
+	})
+	result, err := srv.handleSync(ctx, req)
+	require.NoError(t, err)
+	assert.False(t, result.IsError)
+
+	// Should merge using "develop" (the configured base), not "main"
+	require.Len(t, gc.mergeCalls, 1)
+	assert.Equal(t, "develop", gc.mergeCalls[0])
+}
+
 func TestHandleSync_WithFetch(t *testing.T) {
 	srv, gc, _, _ := newTestServer(t)
 	ctx := context.Background()
@@ -862,6 +902,46 @@ func TestHandleMerge_PR(t *testing.T) {
 	// Should have pushed the branch
 	require.Len(t, gc.pushCalls, 1)
 	assert.Equal(t, "feature/login", gc.pushCalls[0].branch)
+}
+
+func TestHandleMerge_LocalCleansUp(t *testing.T) {
+	srv, gc, ic, sm := newTestServer(t)
+	ctx := context.Background()
+
+	gc.worktrees = []gitops.WorktreeInfo{
+		{Path: "/tmp/testrepo", Branch: "main", HEAD: "abc123"},
+		{Path: "/tmp/testrepo.worktrees/feature", Branch: "feature/login", HEAD: "def456"},
+	}
+	gc.hasUnpushed = true
+
+	// Set state with session info so cleanup can close iTerm
+	require.NoError(t, sm.SetWorktree("/tmp/testrepo.worktrees/feature", &state.WorktreeState{
+		Repo:            "testrepo",
+		Branch:          "feature/login",
+		ClaudeSessionID: "sess-1",
+	}))
+	ic.sessions["sess-1"] = true
+
+	req := callToolReq("wt_merge", map[string]any{
+		"repo_path": "/tmp/testrepo",
+		"branch":    "feature/login",
+	})
+	result, err := srv.handleMerge(ctx, req)
+	require.NoError(t, err)
+	assert.False(t, result.IsError)
+
+	text := resultText(t, result)
+	assert.Contains(t, text, "cleaned_up")
+
+	// Verify cleanup happened
+	require.Len(t, ic.closeCalls, 1, "should close iTerm window")
+	require.Len(t, gc.removedWorktrees, 1, "should remove worktree")
+	require.Len(t, gc.deletedBranches, 1, "should delete branch")
+	assert.Equal(t, "feature/login", gc.deletedBranches[0])
+
+	// Verify state was cleaned
+	ws, _ := sm.GetWorktree("/tmp/testrepo.worktrees/feature")
+	assert.Nil(t, ws, "state should be removed")
 }
 
 func TestHandleMerge_NothingToMerge(t *testing.T) {

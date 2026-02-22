@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	wmcp "github.com/joescharf/wt/internal/mcp"
 	state "github.com/joescharf/wt/pkg/wtstate"
@@ -86,7 +87,10 @@ func mcpServeRun() error {
 	// may not have run for the MCP command's deps.
 	initDeps()
 
-	srv := wmcp.NewServer(gc, itermClient, sm)
+	cfg := wmcp.Config{
+		BaseBranch: viper.GetString("base_branch"),
+	}
+	srv := wmcp.NewServer(gc, itermClient, sm, cfg)
 	return srv.ServeStdio(context.Background())
 }
 
