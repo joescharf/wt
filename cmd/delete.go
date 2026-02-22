@@ -181,13 +181,6 @@ func deleteRun(branch string) error {
 	}
 	dirname := filepath.Base(wtPath)
 
-	if !isDirectory(wtPath) {
-		output.Error("Worktree not found: %s", wtPath)
-		// Clean up stale state
-		_ = stateMgr.RemoveWorktree(wtPath)
-		return fmt.Errorf("worktree not found: %s", wtPath)
-	}
-
 	output.Info("Deleting worktree '%s'", ui.Cyan(dirname))
 
 	// Safety checks (skip with --force)

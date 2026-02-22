@@ -72,6 +72,21 @@ func StatusColor(status string) string {
 	}
 }
 
+// SourceColor returns the string colored by worktree source.
+// "wt" is green, "adopted" is cyan, "external" is yellow.
+func SourceColor(source string) string {
+	switch source {
+	case "wt":
+		return green(source)
+	case "adopted":
+		return cyan(source)
+	case "external":
+		return yellow(source)
+	default:
+		return source
+	}
+}
+
 // GitStatusColor returns the string colored by git status.
 // "dirty" (with or without ↑N/↓N) is red, "↑N"/"↓N" without dirty is yellow, "clean" is green.
 func GitStatusColor(status string) string {

@@ -65,10 +65,6 @@ func mergeRun(branch string) error {
 	}
 	dirname := filepath.Base(wtPath)
 
-	if !isDirectory(wtPath) {
-		return fmt.Errorf("worktree not found: %s", wtPath)
-	}
-
 	// Get branch name from state or fall back to input
 	branchName := branch
 	ws, _ := stateMgr.GetWorktree(wtPath)

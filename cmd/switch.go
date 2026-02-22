@@ -30,10 +30,6 @@ func switchRun(branch string) error {
 		return err
 	}
 
-	if !isDirectory(wtPath) {
-		return fmt.Errorf("worktree not found: %s", wtPath)
-	}
-
 	ws, err := stateMgr.GetWorktree(wtPath)
 	if err != nil {
 		return err

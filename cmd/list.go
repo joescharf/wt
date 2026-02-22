@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/joescharf/wt/internal/ui"
+	state "github.com/joescharf/wt/pkg/wtstate"
 )
 
 var listCmd = &cobra.Command{
@@ -58,11 +59,16 @@ func listRun() error {
 	termWidth := ui.TermWidth()
 	baseBranch := viper.GetString("base_branch")
 
+	wtDir, err := gitClient.WorktreesDir()
+	if err != nil {
+		output.VerboseLog("Could not get worktrees dir: %v", err)
+	}
+
 	// Budget column widths based on terminal size.
-	// Table overhead: 6 border chars + 10 padding chars (1 each side × 5 cols) = 16
-	// Fixed columns: WINDOW(6) + STATUS(15) + AGE(4) = 25
-	const tableOverhead = 16
-	const fixedCols = 25
+	// Table overhead: 7 border chars + 12 padding chars (1 each side × 6 cols) = 19
+	// Fixed columns: SOURCE(8) + WINDOW(6) + STATUS(15) + AGE(4) = 33
+	const tableOverhead = 19
+	const fixedCols = 33
 	available := termWidth - tableOverhead - fixedCols
 	if available < 20 {
 		available = 20
@@ -141,12 +147,16 @@ func listRun() error {
 			age = formatAge(time.Since(ws.CreatedAt.Time))
 		}
 
+		// Determine source
+		source := worktreeSource(wt.Path, wtDir, ws)
+
 		displayBranch := truncRight(wt.Branch, maxBranch)
 		displayPath := truncLeft(wt.Path, maxPath)
 
 		rows = append(rows, []string{
 			displayBranch,
 			displayPath,
+			ui.SourceColor(source),
 			ui.StatusColor(windowStatus),
 			ui.GitStatusColor(gitStatus),
 			age,
@@ -174,7 +184,7 @@ func listRun() error {
 			tablewriter.WithHeaderAutoFormat(tw.Off),
 		)
 
-		table.Header("BRANCH", "PATH", "WINDOW", "STATUS", "AGE")
+		table.Header("BRANCH", "PATH", "SOURCE", "WINDOW", "STATUS", "AGE")
 		table.Bulk(rows)
 		table.Render()
 	}
@@ -213,5 +223,18 @@ func formatAge(d time.Duration) string {
 	default:
 		return fmt.Sprintf("%dd", int(d.Hours()/24))
 	}
+}
+
+// worktreeSource classifies a worktree as "wt" (standard dir), "adopted" (external but has state),
+// or "external" (external with no state).
+func worktreeSource(wtPath, standardDir string, ws *state.WorktreeState) string {
+	inStandardDir := standardDir != "" && strings.HasPrefix(wtPath, standardDir+"/")
+	if inStandardDir {
+		return "wt"
+	}
+	if ws != nil {
+		return "adopted"
+	}
+	return "external"
 }
 

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -85,6 +86,7 @@ func setupTest(t *testing.T) *testEnv {
 	syncMerge = false
 	mergeRebase = false
 	mergeMerge = false
+	discoverAdopt = false
 	configForce = false
 	configDirFunc = defaultConfigDir
 	promptFunc = func(msg string) bool { return false } // default deny in tests
@@ -191,6 +193,7 @@ func TestList_WithWorktrees(t *testing.T) {
 
 	env.git.EXPECT().RepoName().Return("myrepo", nil)
 	env.git.EXPECT().RepoRoot().Return(env.dir, nil)
+	env.git.EXPECT().WorktreesDir().Return(filepath.Join(env.dir, "repo.worktrees"), nil)
 	env.git.EXPECT().WorktreeList().Return([]gitops.WorktreeInfo{
 		{Path: env.dir, Branch: "main", HEAD: "abc123"},
 		{Path: wtPath, Branch: "feature/auth", HEAD: "def456"},
@@ -231,6 +234,7 @@ func TestList_StatusDirty(t *testing.T) {
 
 	env.git.EXPECT().RepoName().Return("myrepo", nil)
 	env.git.EXPECT().RepoRoot().Return(env.dir, nil)
+	env.git.EXPECT().WorktreesDir().Return(filepath.Join(env.dir, "repo.worktrees"), nil)
 	env.git.EXPECT().WorktreeList().Return([]gitops.WorktreeInfo{
 		{Path: env.dir, Branch: "main", HEAD: "abc123"},
 		{Path: wtPath, Branch: "feature/auth", HEAD: "def456"},
@@ -253,6 +257,7 @@ func TestList_StatusDirtyAndBehind(t *testing.T) {
 
 	env.git.EXPECT().RepoName().Return("myrepo", nil)
 	env.git.EXPECT().RepoRoot().Return(env.dir, nil)
+	env.git.EXPECT().WorktreesDir().Return(filepath.Join(env.dir, "repo.worktrees"), nil)
 	env.git.EXPECT().WorktreeList().Return([]gitops.WorktreeInfo{
 		{Path: env.dir, Branch: "main", HEAD: "abc123"},
 		{Path: wtPath, Branch: "feature/auth", HEAD: "def456"},
@@ -277,6 +282,7 @@ func TestList_StatusClean(t *testing.T) {
 
 	env.git.EXPECT().RepoName().Return("myrepo", nil)
 	env.git.EXPECT().RepoRoot().Return(env.dir, nil)
+	env.git.EXPECT().WorktreesDir().Return(filepath.Join(env.dir, "repo.worktrees"), nil)
 	env.git.EXPECT().WorktreeList().Return([]gitops.WorktreeInfo{
 		{Path: env.dir, Branch: "main", HEAD: "abc123"},
 		{Path: wtPath, Branch: "feature/auth", HEAD: "def456"},
@@ -299,6 +305,7 @@ func TestList_StatusBehind(t *testing.T) {
 
 	env.git.EXPECT().RepoName().Return("myrepo", nil)
 	env.git.EXPECT().RepoRoot().Return(env.dir, nil)
+	env.git.EXPECT().WorktreesDir().Return(filepath.Join(env.dir, "repo.worktrees"), nil)
 	env.git.EXPECT().WorktreeList().Return([]gitops.WorktreeInfo{
 		{Path: env.dir, Branch: "main", HEAD: "abc123"},
 		{Path: wtPath, Branch: "feature/auth", HEAD: "def456"},
@@ -321,6 +328,7 @@ func TestList_StatusAheadAndBehind(t *testing.T) {
 
 	env.git.EXPECT().RepoName().Return("myrepo", nil)
 	env.git.EXPECT().RepoRoot().Return(env.dir, nil)
+	env.git.EXPECT().WorktreesDir().Return(filepath.Join(env.dir, "repo.worktrees"), nil)
 	env.git.EXPECT().WorktreeList().Return([]gitops.WorktreeInfo{
 		{Path: env.dir, Branch: "main", HEAD: "abc123"},
 		{Path: wtPath, Branch: "feature/auth", HEAD: "def456"},
@@ -349,6 +357,7 @@ func TestList_PrunesStaleState(t *testing.T) {
 
 	env.git.EXPECT().RepoName().Return("myrepo", nil)
 	env.git.EXPECT().RepoRoot().Return(env.dir, nil)
+	env.git.EXPECT().WorktreesDir().Return(filepath.Join(env.dir, "repo.worktrees"), nil)
 	env.git.EXPECT().WorktreeList().Return([]gitops.WorktreeInfo{
 		{Path: env.dir, Branch: "main", HEAD: "abc123"},
 	}, nil)
@@ -370,6 +379,7 @@ func TestList_StatusRebasing(t *testing.T) {
 
 	env.git.EXPECT().RepoName().Return("myrepo", nil)
 	env.git.EXPECT().RepoRoot().Return(env.dir, nil)
+	env.git.EXPECT().WorktreesDir().Return(filepath.Join(env.dir, "repo.worktrees"), nil)
 	env.git.EXPECT().WorktreeList().Return([]gitops.WorktreeInfo{
 		{Path: env.dir, Branch: "main", HEAD: "abc123"},
 		{Path: wtPath, Branch: "feature/auth", HEAD: "def456"},
@@ -396,6 +406,7 @@ func TestList_StatusMerging(t *testing.T) {
 
 	env.git.EXPECT().RepoName().Return("myrepo", nil)
 	env.git.EXPECT().RepoRoot().Return(env.dir, nil)
+	env.git.EXPECT().WorktreesDir().Return(filepath.Join(env.dir, "repo.worktrees"), nil)
 	env.git.EXPECT().WorktreeList().Return([]gitops.WorktreeInfo{
 		{Path: env.dir, Branch: "main", HEAD: "abc123"},
 		{Path: wtPath, Branch: "feature/auth", HEAD: "def456"},
@@ -421,6 +432,7 @@ func TestList_StatusRebasingOnly(t *testing.T) {
 
 	env.git.EXPECT().RepoName().Return("myrepo", nil)
 	env.git.EXPECT().RepoRoot().Return(env.dir, nil)
+	env.git.EXPECT().WorktreesDir().Return(filepath.Join(env.dir, "repo.worktrees"), nil)
 	env.git.EXPECT().WorktreeList().Return([]gitops.WorktreeInfo{
 		{Path: env.dir, Branch: "main", HEAD: "abc123"},
 		{Path: wtPath, Branch: "feature/auth", HEAD: "def456"},
@@ -533,9 +545,9 @@ func TestOpen_NotFoundPromptAccepted(t *testing.T) {
 	wtDir := filepath.Join(env.dir, "repo.worktrees")
 	wtPath := filepath.Join(wtDir, "feat-mkdocs")
 
-	// openRun calls RepoName + ResolveWorktree, then createRun calls RepoName + WorktreesDir
+	// openRun calls RepoName + ResolveWorktree (returns error), then createRun calls RepoName + WorktreesDir
 	env.git.EXPECT().RepoName().Return("myrepo", nil).Times(2)
-	env.git.EXPECT().ResolveWorktree("feat-mkdocs").Return(wtPath, nil)
+	env.git.EXPECT().ResolveWorktree("feat-mkdocs").Return("", fmt.Errorf("worktree not found: feat-mkdocs"))
 	env.git.EXPECT().WorktreesDir().Return(wtDir, nil)
 	env.git.EXPECT().BranchExists("feat-mkdocs").Return(false, nil)
 	env.git.EXPECT().WorktreeAdd(wtPath, "feat-mkdocs", "main", true).
@@ -557,11 +569,8 @@ func TestOpen_NotFoundPromptDenied(t *testing.T) {
 	env := setupTest(t)
 	promptDefaultYes = func(msg string) bool { return false }
 
-	wtDir := filepath.Join(env.dir, "repo.worktrees")
-	wtPath := filepath.Join(wtDir, "feat-mkdocs")
-
 	env.git.EXPECT().RepoName().Return("myrepo", nil)
-	env.git.EXPECT().ResolveWorktree("feat-mkdocs").Return(wtPath, nil)
+	env.git.EXPECT().ResolveWorktree("feat-mkdocs").Return("", fmt.Errorf("worktree not found: feat-mkdocs"))
 
 	err := openRun("feat-mkdocs")
 	require.NoError(t, err)
@@ -1327,9 +1336,9 @@ func TestMerge_DryRun_PR(t *testing.T) {
 
 func TestMerge_WorktreeNotFound(t *testing.T) {
 	env := setupTest(t)
-	wtPath := filepath.Join(env.dir, "repo.worktrees", "nonexistent")
+	_ = env
 
-	env.git.EXPECT().ResolveWorktree("nonexistent").Return(wtPath, nil)
+	env.git.EXPECT().ResolveWorktree("nonexistent").Return("", fmt.Errorf("worktree not found: nonexistent"))
 
 	err := mergeRun("nonexistent")
 	require.Error(t, err)
@@ -1640,9 +1649,9 @@ func TestSync_DirtyWorktree_Force(t *testing.T) {
 
 func TestSync_WorktreeNotFound(t *testing.T) {
 	env := setupTest(t)
-	wtPath := filepath.Join(env.dir, "repo.worktrees", "nonexistent")
+	_ = env
 
-	env.git.EXPECT().ResolveWorktree("nonexistent").Return(wtPath, nil)
+	env.git.EXPECT().ResolveWorktree("nonexistent").Return("", fmt.Errorf("worktree not found: nonexistent"))
 
 	err := syncRun("nonexistent")
 	require.Error(t, err)
@@ -2357,4 +2366,135 @@ func TestMerge_PR_RebaseWarning(t *testing.T) {
 
 	errOut := env.err.String()
 	assert.Contains(t, errOut, "--rebase is ignored")
+}
+
+// ─── Discover Tests ──────────────────────────────────────────────────────────
+
+func TestDiscover_FindsUnmanaged(t *testing.T) {
+	env := setupTest(t)
+	wtDir := filepath.Join(env.dir, "repo.worktrees")
+	wtPath := filepath.Join(wtDir, "auth")
+	externalPath := filepath.Join(env.dir, ".claude", "worktrees", "glittery-pebble")
+
+	// auth is in state, glittery-pebble is NOT
+	env.state.SetWorktree(wtPath, &state.WorktreeState{
+		Repo:   "myrepo",
+		Branch: "feature/auth",
+	})
+
+	env.git.EXPECT().RepoRoot().Return(env.dir, nil)
+	env.git.EXPECT().RepoName().Return("myrepo", nil)
+	env.git.EXPECT().WorktreesDir().Return(wtDir, nil)
+	env.git.EXPECT().WorktreeList().Return([]gitops.WorktreeInfo{
+		{Path: env.dir, Branch: "main"},
+		{Path: wtPath, Branch: "feature/auth"},
+		{Path: externalPath, Branch: "worktree-glittery-pebble"},
+	}, nil)
+
+	err := discoverRun()
+	require.NoError(t, err)
+
+	out := env.out.String()
+	assert.Contains(t, out, "1 unmanaged")
+	assert.Contains(t, out, "worktree-glittery-pebble")
+	assert.Contains(t, out, "external")
+	assert.NotContains(t, out, "feature/auth") // managed, should not appear
+}
+
+func TestDiscover_NoneFound(t *testing.T) {
+	env := setupTest(t)
+	wtDir := filepath.Join(env.dir, "repo.worktrees")
+	wtPath := filepath.Join(wtDir, "auth")
+
+	env.state.SetWorktree(wtPath, &state.WorktreeState{
+		Repo:   "myrepo",
+		Branch: "feature/auth",
+	})
+
+	env.git.EXPECT().RepoRoot().Return(env.dir, nil)
+	env.git.EXPECT().RepoName().Return("myrepo", nil)
+	env.git.EXPECT().WorktreesDir().Return(wtDir, nil)
+	env.git.EXPECT().WorktreeList().Return([]gitops.WorktreeInfo{
+		{Path: env.dir, Branch: "main"},
+		{Path: wtPath, Branch: "feature/auth"},
+	}, nil)
+
+	err := discoverRun()
+	require.NoError(t, err)
+	assert.Contains(t, env.out.String(), "No unmanaged")
+}
+
+func TestDiscover_Adopt(t *testing.T) {
+	env := setupTest(t)
+	discoverAdopt = true
+
+	wtDir := filepath.Join(env.dir, "repo.worktrees")
+	externalPath := filepath.Join(env.dir, ".claude", "worktrees", "glittery-pebble")
+
+	env.git.EXPECT().RepoRoot().Return(env.dir, nil)
+	env.git.EXPECT().RepoName().Return("myrepo", nil)
+	env.git.EXPECT().WorktreesDir().Return(wtDir, nil)
+	env.git.EXPECT().WorktreeList().Return([]gitops.WorktreeInfo{
+		{Path: env.dir, Branch: "main"},
+		{Path: externalPath, Branch: "worktree-glittery-pebble"},
+	}, nil)
+
+	err := discoverRun()
+	require.NoError(t, err)
+
+	out := env.out.String()
+	assert.Contains(t, out, "Adopted")
+	assert.Contains(t, out, "worktree-glittery-pebble")
+
+	// Verify state was written
+	ws, err := env.state.GetWorktree(externalPath)
+	require.NoError(t, err)
+	require.NotNil(t, ws)
+	assert.Equal(t, "worktree-glittery-pebble", ws.Branch)
+	assert.Equal(t, "myrepo", ws.Repo)
+}
+
+func TestDiscover_DryRun(t *testing.T) {
+	env := setupTest(t)
+	discoverAdopt = true
+	dryRun = true
+	env.ui.DryRun = true
+
+	wtDir := filepath.Join(env.dir, "repo.worktrees")
+	externalPath := filepath.Join(env.dir, ".claude", "worktrees", "glittery-pebble")
+
+	env.git.EXPECT().RepoRoot().Return(env.dir, nil)
+	env.git.EXPECT().RepoName().Return("myrepo", nil)
+	env.git.EXPECT().WorktreesDir().Return(wtDir, nil)
+	env.git.EXPECT().WorktreeList().Return([]gitops.WorktreeInfo{
+		{Path: env.dir, Branch: "main"},
+		{Path: externalPath, Branch: "worktree-glittery-pebble"},
+	}, nil)
+
+	err := discoverRun()
+	require.NoError(t, err)
+
+	assert.Contains(t, env.err.String(), "DRY-RUN")
+
+	// Verify state was NOT written
+	ws, _ := env.state.GetWorktree(externalPath)
+	assert.Nil(t, ws)
+}
+
+// ─── Source Classification Tests ─────────────────────────────────────────────
+
+func TestWorktreeSource(t *testing.T) {
+	standardDir := "/repo.worktrees"
+
+	// Path in standard dir => "wt"
+	assert.Equal(t, "wt", worktreeSource("/repo.worktrees/auth", standardDir, &state.WorktreeState{}))
+
+	// External path with state => "adopted"
+	assert.Equal(t, "adopted", worktreeSource("/home/.claude/worktrees/x", standardDir, &state.WorktreeState{}))
+
+	// External path without state => "external"
+	assert.Equal(t, "external", worktreeSource("/home/.claude/worktrees/x", standardDir, nil))
+
+	// Standard dir with no state still "wt"
+	assert.Equal(t, "wt", worktreeSource("/repo.worktrees/auth", standardDir, nil))
 }

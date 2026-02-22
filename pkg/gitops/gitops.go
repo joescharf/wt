@@ -286,19 +286,81 @@ func (c *RealClient) CurrentBranch(worktreePath string) (string, error) {
 }
 
 func (c *RealClient) ResolveWorktree(input string) (string, error) {
+	// Fast path: absolute path passthrough
+	if filepath.IsAbs(input) {
+		if isDir(input) {
+			return input, nil
+		}
+		return "", fmt.Errorf("worktree not found: %s", input)
+	}
+
+	// Fast path: check standard <repo>.worktrees/ directory
 	wtDir, err := c.WorktreesDir()
 	if err != nil {
 		return "", err
 	}
-	return ResolveWorktreePath(input, wtDir)
+
+	candidate := filepath.Join(wtDir, input)
+	if isDir(candidate) {
+		return candidate, nil
+	}
+	dirname := BranchToDirname(input)
+	candidate = filepath.Join(wtDir, dirname)
+	if isDir(candidate) {
+		return candidate, nil
+	}
+
+	// Fallback: search git worktree list for branch/dirname match
+	worktrees, err := c.WorktreeList()
+	if err != nil {
+		return "", fmt.Errorf("worktree not found: %s", input)
+	}
+	if path := ResolveWorktreeFromList(input, worktrees); path != "" {
+		return path, nil
+	}
+
+	return "", fmt.Errorf("worktree not found: %s", input)
 }
 
-// ResolveWorktreePath resolves a branch name, dirname, or full path to a worktree path.
+// ResolveWorktreeFromList searches a list of WorktreeInfo for a match by branch name,
+// then by directory basename. Returns the matching path or "" if not found.
+// This is a pure function for testability and reuse.
+func ResolveWorktreeFromList(input string, worktrees []WorktreeInfo) string {
+	// Try exact branch name match
+	for _, wt := range worktrees {
+		if wt.Branch == input {
+			return wt.Path
+		}
+	}
+
+	// Try dirname match (last segment of branch)
+	dirname := BranchToDirname(input)
+	for _, wt := range worktrees {
+		if filepath.Base(wt.Path) == dirname {
+			return wt.Path
+		}
+	}
+
+	// Try matching worktree branch's dirname against input
+	for _, wt := range worktrees {
+		if BranchToDirname(wt.Branch) == input {
+			return wt.Path
+		}
+	}
+
+	return ""
+}
+
+// ResolveWorktreePath resolves a branch name, dirname, or full path to a worktree path
+// within the standard worktrees directory. Returns error if not found.
 // This is a pure function for testability.
 func ResolveWorktreePath(input, worktreesDir string) (string, error) {
 	// Full path
 	if filepath.IsAbs(input) {
-		return input, nil
+		if isDir(input) {
+			return input, nil
+		}
+		return "", fmt.Errorf("worktree not found: %s", input)
 	}
 
 	// Try as dirname first
@@ -310,7 +372,11 @@ func ResolveWorktreePath(input, worktreesDir string) (string, error) {
 	// Try converting from branch name
 	dirname := BranchToDirname(input)
 	candidate = filepath.Join(worktreesDir, dirname)
-	return candidate, nil
+	if isDir(candidate) {
+		return candidate, nil
+	}
+
+	return "", fmt.Errorf("worktree not found: %s", input)
 }
 
 // BranchToDirname converts a branch name to a directory name by extracting the last path segment.

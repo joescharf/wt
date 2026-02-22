@@ -40,17 +40,14 @@ func openRun(branch string) error {
 
 	wtPath, err := gitClient.ResolveWorktree(branch)
 	if err != nil {
-		return err
-	}
-	dirname := filepath.Base(wtPath)
-
-	if !isDirectory(wtPath) {
-		output.Warning("Worktree not found: %s", wtPath)
+		// Worktree not found — offer to create it
+		output.Warning("Worktree not found: %s", branch)
 		if promptDefaultYes(fmt.Sprintf("Create worktree '%s'?", branch)) {
 			return createRun(branch)
 		}
 		return nil
 	}
+	dirname := filepath.Base(wtPath)
 
 	// Check if window already exists
 	ws, err := stateMgr.GetWorktree(wtPath)

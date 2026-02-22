@@ -70,10 +70,15 @@ func TestResolveWorktreePath(t *testing.T) {
 	err := os.MkdirAll(authDir, 0755)
 	require.NoError(t, err)
 
-	// Full path passthrough
-	path, err := ResolveWorktreePath("/some/absolute/path", wtDir)
+	// Full path passthrough (existing directory)
+	path, err := ResolveWorktreePath(authDir, wtDir)
 	require.NoError(t, err)
-	assert.Equal(t, "/some/absolute/path", path)
+	assert.Equal(t, authDir, path)
+
+	// Full path that doesn't exist returns error
+	_, err = ResolveWorktreePath("/some/absolute/nonexistent", wtDir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "worktree not found")
 
 	// Dirname match
 	path, err = ResolveWorktreePath("auth", wtDir)
@@ -85,10 +90,46 @@ func TestResolveWorktreePath(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, authDir, path)
 
-	// Non-existing returns expected path
-	path, err = ResolveWorktreePath("feature/new", wtDir)
-	require.NoError(t, err)
-	assert.Equal(t, filepath.Join(wtDir, "new"), path)
+	// Non-existing returns error
+	_, err = ResolveWorktreePath("feature/new", wtDir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "worktree not found")
+}
+
+func TestResolveWorktreeFromList(t *testing.T) {
+	worktrees := []WorktreeInfo{
+		{Path: "/repo", Branch: "main"},
+		{Path: "/repo.worktrees/auth", Branch: "feature/auth"},
+		{Path: "/home/user/repo/.claude/worktrees/glittery-pebble", Branch: "worktree-glittery-pebble"},
+	}
+
+	// Exact branch match
+	path := ResolveWorktreeFromList("feature/auth", worktrees)
+	assert.Equal(t, "/repo.worktrees/auth", path)
+
+	// Branch match for external worktree
+	path = ResolveWorktreeFromList("worktree-glittery-pebble", worktrees)
+	assert.Equal(t, "/home/user/repo/.claude/worktrees/glittery-pebble", path)
+
+	// Dirname match (basename of path)
+	path = ResolveWorktreeFromList("auth", worktrees)
+	assert.Equal(t, "/repo.worktrees/auth", path)
+
+	// Dirname match for external worktree
+	path = ResolveWorktreeFromList("glittery-pebble", worktrees)
+	assert.Equal(t, "/home/user/repo/.claude/worktrees/glittery-pebble", path)
+
+	// Branch dirname match (last segment of branch name matches input)
+	path = ResolveWorktreeFromList("auth", worktrees)
+	assert.Equal(t, "/repo.worktrees/auth", path)
+
+	// Not found
+	path = ResolveWorktreeFromList("nonexistent", worktrees)
+	assert.Equal(t, "", path)
+
+	// Empty list
+	path = ResolveWorktreeFromList("anything", nil)
+	assert.Equal(t, "", path)
 }
 
 // Integration tests that create real git repos

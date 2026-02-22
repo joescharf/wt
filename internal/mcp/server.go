@@ -597,32 +597,15 @@ func (s *Server) handleMergePR(repoPath, wtPath, branch, baseBranch string) (*mc
 // ---------------------------------------------------------------------------
 
 // resolveWorktreePath finds the worktree path for a given branch by searching
-// the worktree list.
+// the worktree list using the shared resolution logic.
 func (s *Server) resolveWorktreePath(repoPath, branch string) (string, error) {
 	worktrees, err := s.git.WorktreeList(repoPath)
 	if err != nil {
 		return "", err
 	}
 
-	// Direct branch name match
-	for _, wt := range worktrees {
-		if wt.Branch == branch {
-			return wt.Path, nil
-		}
-	}
-
-	// Try matching by dirname (last segment of branch)
-	dirname := gitops.BranchToDirname(branch)
-	wtDir, err := s.git.WorktreesDir(repoPath)
-	if err != nil {
-		return "", err
-	}
-
-	candidate := filepath.Join(wtDir, dirname)
-	for _, wt := range worktrees {
-		if wt.Path == candidate {
-			return wt.Path, nil
-		}
+	if path := gitops.ResolveWorktreeFromList(branch, worktrees); path != "" {
+		return path, nil
 	}
 
 	return "", fmt.Errorf("not found")

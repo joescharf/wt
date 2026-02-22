@@ -129,18 +129,19 @@ Example output:
 ```
 Worktrees for myrepo
 
-  BRANCH          PATH                         WINDOW   STATUS              AGE
-  feature/auth    .../myrepo.worktrees/auth    open     ↑2                  2h
-  bugfix/login    .../myrepo.worktrees/login   stale    dirty ↓3            1d
-  feature/api     .../myrepo.worktrees/api     closed   clean               3d
-  feature/sync    .../myrepo.worktrees/sync    open     ↑1 ↓5              4h
-  feature/rebase  .../myrepo.worktrees/rebase  open     rebasing dirty ↓2   1h
+  BRANCH          PATH                         SOURCE    WINDOW   STATUS              AGE
+  feature/auth    .../myrepo.worktrees/auth    wt        open     ↑2                  2h
+  bugfix/login    .../myrepo.worktrees/login   wt        stale    dirty ↓3            1d
+  feature/api     .../myrepo.worktrees/api     wt        closed   clean               3d
+  wt-glittery     .../.claude/worktrees/glittery adopted  open     clean               1h
+  wt-shiny        .../.claude/worktrees/shiny  external  closed   ↓5                  3d
 ```
 
 Output columns:
 
 - **BRANCH** — git branch name
 - **PATH** — worktree directory path
+- **SOURCE** — `wt` (green, standard worktrees dir), `adopted` (cyan, external but tracked), or `external` (yellow, not managed by wt)
 - **WINDOW** — `open` (green), `stale` (yellow, window closed but state exists), or `closed` (red)
 - **STATUS** — git working state, combining operation, dirty, and ahead/behind indicators:
   - `clean` (green) — no uncommitted changes, in sync with base branch
@@ -316,6 +317,18 @@ wt prune -n       # Dry-run: show what would be cleaned
 ```
 
 This removes state entries for worktree paths that no longer exist on disk and runs `git worktree prune` to clean git's internal tracking.
+
+### `discover`
+
+Finds worktrees not managed by wt — for example, those created by Claude Code's `EnterWorktree`. Shows their branch, path, and source classification.
+
+```bash
+wt discover              # List unmanaged worktrees
+wt discover --adopt      # Register them in wt state
+wt discover --adopt -n   # Dry-run: show what would be adopted
+```
+
+Use `--adopt` to create state entries so these worktrees appear in `wt list` with source "adopted" and can be managed with `wt sync`, `wt merge`, etc.
 
 ### `completion <shell>`
 
