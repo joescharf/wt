@@ -65,7 +65,7 @@ docs-serve: ## Serve docs locally (requires uv + docs/ directory)
 	@[ -d docs ] && [ -f docs/mkdocs.yml ] || { echo "No docs/ directory with mkdocs.yml found."; exit 1; }
 	cd docs && uv run mkdocs serve
 
-docs-build: ## Build docs site (requires uv + docs/ directory)
+docs-build: docs-deps ## Build docs site (requires uv + docs/ directory)
 	@[ -d docs ] && [ -f docs/mkdocs.yml ] || { echo "No docs/ directory with mkdocs.yml found."; exit 1; }
 	cd docs && uv run mkdocs build
 
