@@ -3,6 +3,7 @@ package ops
 // SyncOptions configures a sync operation.
 type SyncOptions struct {
 	BaseBranch string // Base branch to sync from (e.g., "main")
+	Branch     string // Feature branch name (if set, skips auto-detection)
 	Strategy   string // "merge" or "rebase"
 	Force      bool   // Skip dirty worktree check
 	DryRun     bool   // Show what would happen without changes
@@ -27,6 +28,7 @@ type SyncResult struct {
 // MergeOptions configures a merge operation.
 type MergeOptions struct {
 	BaseBranch string // Target branch to merge into
+	Branch     string // Feature branch name (if set, skips auto-detection)
 	Strategy   string // "merge" or "rebase"
 	Force      bool   // Skip safety checks
 	DryRun     bool   // Show what would happen without changes

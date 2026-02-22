@@ -24,9 +24,11 @@ func Sync(ctx context.Context, git gitops.Client, state *wtstate.Manager,
 		DryRun:       opts.DryRun,
 	}
 
-	// Get branch name: try state, then git, fall back to dirname
+	// Get branch name: explicit > state > git > dirname
 	branchName := dirname
-	if state != nil {
+	if opts.Branch != "" {
+		branchName = opts.Branch
+	} else if state != nil {
 		ws, _ := state.GetWorktree(wtPath)
 		if ws != nil && ws.Branch != "" {
 			branchName = ws.Branch
